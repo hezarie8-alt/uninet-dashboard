@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}خطا | یونی‌نت{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="glass-card error-card">
+        <div class="error-icon">
+            <span class="material-icons-round">{{ 'block' if error_code == 403 else 'search_off' if error_code == 404 else 'report' }}</span>
+        </div>
+        <h1 class="error-code">{{ error_code or 500 }}</h1>
+        <h2 class="error-title">
+            {% if error_code == 404 %}
+                صفحه پیدا نشد
+            {% elif error_code == 403 %}
+                دسترسی مجاز نیست
+            {% else %}
+                خطایی رخ داد
+            {% endif %}
+        </h2>
+        <p class="error-msg">{{ error_msg or 'خطای داخلی سرور. لطفاً دوباره تلاش کنید.' }}</p>
+        <div class="error-actions">
+            <a href="{{ url_for('index') }}" class="btn btn-custom">
+                <span class="material-icons-round">home</span>
+                بازگشت به صفحه اصلی
+            </a>
+            <button type="button" class="btn btn-outline" onclick="location.reload()">
+                <span class="material-icons-round">refresh</span>
+                تلاش دوباره
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page{ display:flex; align-items:center; justify-content:center; min-height:60vh; padding:2rem 1rem; position:relative; z-index:1; }
+.error-card{
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg); padding:2.5rem 2rem;
+    backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
+    box-shadow:var(--shadow-glass);
+    text-align:center; max-width:460px; width:100%;
+}
+.error-icon{
+    width:72px; height:72px; margin:0 auto 1rem; border-radius:var(--radius-lg);
+    background:linear-gradient(135deg, var(--brand), var(--brand-dark));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 24px rgba(0,131,143,.4);
+}
+.error-icon .material-icons-round{ color:#fff; font-size:2.2rem; }
+.error-code{ font-size:3rem; font-weight:900; margin:0; line-height:1.1; background:linear-gradient(135deg, var(--brand-light), var(--accent)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.error-title{ font-size:1.25rem; font-weight:800; margin:.5rem 0 .35rem; color:var(--text-primary); }
+.error-msg{ font-size:.92rem; color:var(--text-secondary); margin:0 0 1.5rem; line-height:1.8; }
+.error-actions{ display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; }
+</style>
+{% endblock %}

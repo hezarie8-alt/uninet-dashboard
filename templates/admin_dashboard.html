@@ -1,0 +1,2066 @@
+{% extends "base.html" %}
+
+{% block title %}پنل مدیریت | یونی‌نت{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+
+    <!-- ===== Tab Navigation ===== -->
+    <div class="glass-card admin-tabs-bar">
+        <button class="dash-tab active" id="tab-btn-master"
+                onclick="openAdminTab('master-schedule', this)">
+            <span class="material-icons-round">grid_on</span>
+            <span>تعریف کلاس‌های خالی</span>
+        </button>
+        <button class="dash-tab" id="tab-btn-requests"
+                onclick="openAdminTab('requests', this)">
+            <span class="material-icons-round">list_alt</span>
+            <span>درخواست‌های رزرو</span>
+            {% if requests %}
+                <span class="tab-badge">{{ requests|length }}</span>
+            {% endif %}
+        </button>
+        <button class="dash-tab" id="tab-btn-cancelled"
+                onclick="openAdminTab('cancelled', this)">
+            <span class="material-icons-round">event_busy</span>
+            <span>لغو کلاس‌ها</span>
+        </button>
+        <button class="dash-tab" id="tab-btn-catalog"
+                onclick="openAdminTab('catalog', this)">
+            <span class="material-icons-round">menu_book</span>
+            <span>مدیریت دروس و گروه‌ها</span>
+        </button>
+    </div>
+
+    <!-- ===== 1. Master Schedule ===== -->
+    <div id="master-schedule" class="tab-content active">
+        <div class="glass-card section-card">
+            <div class="section-card-header">
+                <div class="section-card-title">
+                    <span class="material-icons-round">grid_on</span>
+                    <h2>تعریف کلاس‌های خالی پایه</h2>
+                </div>
+                <button class="btn btn-custom" onclick="saveMasterSchedule()">
+                    <span class="material-icons-round">save</span>
+                    <span>ذخیره تغییرات</span>
+                </button>
+            </div>
+
+            <p class="section-hint">
+                <span class="material-icons-round" style="font-size:1rem; vertical-align:middle;">info_outline</span>
+                روی هر خانه کلیک کنید و شماره کلاس‌های خالی را با کاما وارد کنید
+                (مثال: <code>101, 102, آمفی</code>). این برنامه تا پایان ترم معتبر است.
+            </p>
+
+            <div class="schedule-wrapper">
+                <div class="schedule-grid" id="master-schedule-grid">
+                    <div class="schedule-header corner-cell"></div>
+                    <div class="schedule-header">شنبه</div>
+                    <div class="schedule-header">یکشنبه</div>
+                    <div class="schedule-header">دوشنبه</div>
+                    <div class="schedule-header">سه‌شنبه</div>
+                    <div class="schedule-header">چهارشنبه</div>
+
+                    {% set times = ['8-10', '10-12', '12-14', '14-16', '16-18', '18-20'] %}
+                    {% set time_labels = ['۸ - ۱۰', '۱۰ - ۱۲', '۱۲ - ۱۴', '۱۴ - ۱۶', '۱۶ - ۱۸', '۱۸ - ۲۰'] %}
+
+                    {% for i in range(6) %}
+                        <div class="schedule-time">{{ time_labels[i] }}</div>
+                        {% for day in ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday'] %}
+                            <div class="schedule-cell master-cell clickable-cell"
+                                 data-day="{{ day }}"
+                                 data-time="{{ times[i] }}"
+                                 data-rooms=""
+                                 onclick="editMasterSlot(this)">
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="legend-row">
+                <div class="legend-item">
+                    <span class="legend-dot" style="background:var(--brand-light);"></span>
+                    <span>کلاس تعریف‌شده</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background:var(--glass-border-strong);"></span>
+                    <span>خالی (تعریف نشده)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 2. Reservation Requests ===== -->
+    <div id="requests" class="tab-content">
+        <div class="glass-card section-card">
+            <div class="section-card-header">
+                <div class="section-card-title">
+                    <span class="material-icons-round">pending_actions</span>
+                    <h2>درخواست‌های در انتظار تأیید</h2>
+                </div>
+                {% if requests %}
+                    <span class="requests-count-badge">{{ requests|length }} درخواست</span>
+                {% endif %}
+            </div>
+
+            <div class="requests-grid">
+                {% if requests %}
+                    {% for req in requests %}
+                    <div class="glass-card request-card" id="req-card-{{ req.id }}">
+                        <div class="req-card-header">
+                            <div class="req-user-info">
+                                <div class="req-user-avatar">{{ (req.user.full_name or '?')[0] if req.user and req.user.full_name else '?' }}</div>
+                                <div class="req-user-details">
+                                    <strong class="req-user-name">{{ req.user.full_name if req.user else 'کاربر حذف‌شده' }}</strong>
+                                    <span class="req-student-id">{{ req.user.student_id if req.user else '' }}</span>
+                                </div>
+                            </div>
+                            <div class="req-room-badge">
+                                <span class="material-icons-round" style="font-size:.9rem;">meeting_room</span>
+                                کلاس {{ req.room_name }}
+                            </div>
+                        </div>
+
+                        <div class="req-card-body">
+                            <div class="req-meta">
+                                <span class="req-meta-item">
+                                    <span class="material-icons-round">access_time</span>
+                                    {% set day_names = {
+                                        'saturday': 'شنبه', 'sunday': 'یکشنبه',
+                                        'monday': 'دوشنبه', 'tuesday': 'سه‌شنبه',
+                                        'wednesday': 'چهارشنبه', 'thursday': 'پنجشنبه',
+                                        'friday': 'جمعه'
+                                    } %}
+                                    {% if req.master_slot %}
+                                        {{ day_names.get(req.master_slot.day, req.master_slot.day or 'روز نامشخص') }}
+                                        — ساعت {{ (req.master_slot.time_slot or 'نامشخص').replace('-', ' تا ') }}
+                                    {% else %}
+                                        برنامه مرجع این درخواست دیگر موجود نیست
+                                    {% endif %}
+                                </span>
+                                <span class="req-meta-item">
+                                    <span class="material-icons-round">calendar_today</span>
+                                    {% if req.created_at %}
+                                        {{ req.created_at.strftime('%Y/%m/%d — %H:%M') }}
+                                    {% else %}
+                                        تاریخ ثبت نامشخص
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="req-reason">
+                                <span class="material-icons-round">notes</span>
+                                <span>{{ req.reason }}</span>
+                            </div>
+                        </div>
+
+                        <div class="req-card-actions">
+                            <form action="{{ url_for('handle_reservation', req_id=req.id, action='approve') }}"
+                                  method="POST" style="display:inline;"
+                                  onsubmit="return confirm('آیا این درخواست تأیید شود؟')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-approve">
+                                    <span class="material-icons-round">check_circle</span> تأیید
+                                </button>
+                            </form>
+                            <form action="{{ url_for('handle_reservation', req_id=req.id, action='reject') }}"
+                                  method="POST" style="display:inline;"
+                                  onsubmit="return confirm('آیا این درخواست رد شود؟')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-reject">
+                                    <span class="material-icons-round">cancel</span> رد
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state-full">
+                        <span class="material-icons-round">check_circle</span>
+                        <h3>هیچ درخواستی در انتظار نیست</h3>
+                        <p>تمام درخواست‌های رزرو پردازش شده‌اند.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 3. Cancelled Classes ===== -->
+    <div id="cancelled" class="tab-content">
+        <div class="glass-card section-card">
+            <div class="section-card-header">
+                <div class="section-card-title">
+                    <span class="material-icons-round">event_busy</span>
+                    <h2>ثبت کلاس لغو شده</h2>
+                </div>
+            </div>
+
+            <div class="cancel-logic-hint">
+                <div class="cancel-logic-item cancel-logic-specific">
+                    <span class="material-icons-round">class</span>
+                    <div>
+                        <strong>لغو کلاس خاص</strong>
+                        <p>اگر نام استاد + نام درس + ساعت مشخص باشد، فقط همان کلاس لغو می‌شود.</p>
+                    </div>
+                </div>
+                <div class="cancel-logic-divider"><span class="material-icons-round">compare_arrows</span></div>
+                <div class="cancel-logic-item cancel-logic-all">
+                    <span class="material-icons-round">person_off</span>
+                    <div>
+                        <strong>لغو تمام کلاس‌های استاد در یک روز</strong>
+                        <p>اگر نام استاد + تاریخ باشد (بدون ساعت)، تمام کلاس‌های آن استاد در آن روز لغو می‌شوند.</p>
+                    </div>
+                </div>
+            </div>
+
+            <form action="{{ url_for('add_cancelled_class') }}" method="POST" class="cancelled-form" id="cancel-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="cancel_date_j" id="cancel_date_j_input">
+                <input type="hidden" name="start_date_j"  id="start_date_j_input">
+                <input type="hidden" name="end_date_j"    id="end_date_j_input">
+
+                <div class="form-two-col">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span class="material-icons-round form-label-icon">person</span>
+                            نام استاد <span class="required-star">*</span>
+                        </label>
+                        <input type="text" name="professor" id="cancel-professor" class="form-control"
+                               placeholder="مثال: دکتر محمدی" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span class="material-icons-round form-label-icon">menu_book</span>
+                            نام درس
+                        </label>
+                        <input type="text" name="course" id="cancel-course" class="form-control"
+                               placeholder="اگر خالی بماند، تمام دروس استاد">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons-round form-label-icon">schedule</span>
+                        ساعت کلاس
+                        <span class="form-label-hint">(اگر خالی بماند → تمام کلاس‌های استاد در آن روز)</span>
+                    </label>
+                    <div class="time-slots-row">
+                        <label class="time-slot-chip">
+                            <input type="radio" name="time_slot" value="">
+                            <span>همه</span>
+                        </label>
+                        {% if class_time_slots %}
+                            {% for ts in class_time_slots %}
+                            <label class="time-slot-chip">
+                                <input type="radio" name="time_slot" value="{{ ts }}">
+                                <span>{{ ts }}</span>
+                            </label>
+                            {% endfor %}
+                        {% else %}
+                            {% for ts in ['08:00-10:00','10:00-12:00','12:00-14:00','14:00-16:00','16:00-18:00','18:00-20:00'] %}
+                            <label class="time-slot-chip">
+                                <input type="radio" name="time_slot" value="{{ ts }}">
+                                <span>{{ ts }}</span>
+                            </label>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons-round form-label-icon">notes</span>
+                        توضیحات
+                    </label>
+                    <input type="text" name="desc" class="form-control"
+                           placeholder="مثال: کلاس جبرانی دارد — با جلسه تمرین جابجا شد">
+                </div>
+
+                <div class="cancel-date-section">
+                    <p class="cancel-date-hint">
+                        <span class="material-icons-round">calendar_month</span>
+                        <strong>تاریخ لغو را از تقویم شمسی انتخاب کنید:</strong>
+                        (یا تاریخ دقیق یا بازه زمانی)
+                    </p>
+
+                    <div class="form-three-col">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="material-icons-round form-label-icon">event</span>
+                                تاریخ دقیق لغو
+                            </label>
+                            <div class="jalali-input-wrapper" id="picker-cancel">
+                                <input type="text" class="form-control jalali-input"
+                                       id="cancel_date_display" readonly
+                                       placeholder="انتخاب تاریخ..."
+                                       onclick="openJalaliPicker('cancel')">
+                                <span class="material-icons-round jalali-input-icon">calendar_today</span>
+                                <button type="button" class="jalali-clear-btn"
+                                        onclick="clearJalaliDate('cancel')" title="پاک کردن">
+                                    <span class="material-icons-round">close</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="material-icons-round form-label-icon">date_range</span>
+                                از تاریخ
+                            </label>
+                            <div class="jalali-input-wrapper" id="picker-start">
+                                <input type="text" class="form-control jalali-input"
+                                       id="start_date_display" readonly
+                                       placeholder="انتخاب تاریخ..."
+                                       onclick="openJalaliPicker('start')">
+                                <span class="material-icons-round jalali-input-icon">date_range</span>
+                                <button type="button" class="jalali-clear-btn"
+                                        onclick="clearJalaliDate('start')" title="پاک کردن">
+                                    <span class="material-icons-round">close</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="material-icons-round form-label-icon">date_range</span>
+                                تا تاریخ
+                            </label>
+                            <div class="jalali-input-wrapper" id="picker-end">
+                                <input type="text" class="form-control jalali-input"
+                                       id="end_date_display" readonly
+                                       placeholder="انتخاب تاریخ..."
+                                       onclick="openJalaliPicker('end')">
+                                <span class="material-icons-round jalali-input-icon">date_range</span>
+                                <button type="button" class="jalali-clear-btn"
+                                        onclick="clearJalaliDate('end')" title="پاک کردن">
+                                    <span class="material-icons-round">close</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:1.25rem;">
+                    <button type="submit" class="btn btn-custom" onclick="return validateCancelForm()">
+                        <span class="material-icons-round">add_circle_outline</span>
+                        ثبت لغو کلاس
+                    </button>
+                </div>
+            </form>
+
+            <!-- لیست لغوها -->
+            <div class="cancelled-list-section">
+                <h3 class="cancelled-list-title">
+                    <span class="material-icons-round">list</span>
+                    لغوهای ثبت‌شده
+                    {% if cancelled_classes %}
+                        <span class="list-count">{{ cancelled_classes|length }}</span>
+                    {% endif %}
+                </h3>
+
+                {% if cancelled_classes %}
+                <div class="cancelled-items-grid">
+                    {% for c in cancelled_classes %}
+                    <div class="glass-card cancelled-item-card" id="cancel-card-{{ c.id }}">
+                        <div class="cancelled-item-header">
+                            <div class="cancelled-item-info">
+                                <div class="cancelled-item-top">
+                                    {% if c.course_name %}
+                                        <span class="cancelled-course">{{ c.course_name }}</span>
+                                    {% else %}
+                                        <span class="cancelled-course muted">تمام کلاس‌ها</span>
+                                    {% endif %}
+                                    {% if c.time_slot %}
+                                        <span class="cancelled-timeslot-badge">
+                                            <span class="material-icons-round" style="font-size:.78rem;">schedule</span>
+                                            {{ c.time_slot }}
+                                        </span>
+                                    {% else %}
+                                        <span class="cancelled-timeslot-badge all-day">
+                                            <span class="material-icons-round" style="font-size:.78rem;">wb_sunny</span>
+                                            تمام روز
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <span class="cancelled-prof">
+                                    <span class="material-icons-round" style="font-size:.85rem;">person</span>
+                                    {{ c.professor_name or 'نامشخص' }}
+                                </span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:.5rem; flex-shrink:0;">
+                                <span class="cancelled-date-badge">
+                                    {% if c.cancel_date %}
+                                        <span class="material-icons-round" style="font-size:.85rem;">event</span>
+                                        {{ c.cancel_date.strftime('%Y/%m/%d') }}
+                                    {% elif c.start_date %}
+                                        <span class="material-icons-round" style="font-size:.85rem;">date_range</span>
+                                        {{ c.start_date.strftime('%Y/%m/%d') }} تا
+                                        {{ c.end_date.strftime('%Y/%m/%d') if c.end_date else '؟' }}
+                                    {% else %}
+                                        نامشخص
+                                    {% endif %}
+                                </span>
+                                <button class="delete-cancel-btn"
+                                        onclick="deleteCancelledClass({{ c.id }}, this)"
+                                        title="حذف">
+                                    <span class="material-icons-round">delete_outline</span>
+                                </button>
+                            </div>
+                        </div>
+                        {% if c.description %}
+                        <div class="cancelled-item-desc">
+                            <span class="material-icons-round" style="font-size:.85rem;">notes</span>
+                            {{ c.description }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-full">
+                    <span class="material-icons-round" style="color:var(--success);">event_available</span>
+                    <h3>لیست خالی است</h3>
+                    <p>هیچ کلاسی لغو نشده است.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div><!-- /tab cancelled -->
+
+    <!-- ===== 4. Catalog: مدیریت دروس و گروه‌ها (Part B1) ===== -->
+    <div id="catalog" class="tab-content">
+        <div class="glass-card section-card">
+            <div class="section-card-header">
+                <div class="section-card-title">
+                    <span class="material-icons-round">menu_book</span>
+                    <h2>مدیریت دروس و گروه‌ها</h2>
+                </div>
+                <div class="catalog-header-actions">
+                    <button class="btn btn-outline" onclick="downloadTemplate()">
+                        <span class="material-icons-round">download</span>
+                        <span>قالب استاندارد</span>
+                    </button>
+                    <button class="btn btn-outline" onclick="exportCatalog()">
+                        <span class="material-icons-round">upload_file</span>
+                        <span>خروجی</span>
+                    </button>
+                    <button class="btn btn-custom" onclick="openCourseForm()">
+                        <span class="material-icons-round">add</span>
+                        <span>افزودن درس</span>
+                    </button>
+                </div>
+            </div>
+
+            <p class="section-hint">
+                <span class="material-icons-round" style="font-size:1rem; vertical-align:middle;">info_outline</span>
+                دانشجویان فقط «ترم فعال» را می‌بینند. ویرایش شما بلافاصله برای همهٔ
+                دانشجویانِ ثبت‌نام‌شده اعمال می‌شود (اطلاعیه + به‌روزرسانی زنده).
+            </p>
+
+            <!-- ترم فعال + شروع ترم -->
+            <div class="catalog-term-bar">
+                <div class="catalog-term-field">
+                    <label for="catalog-active-term">ترم فعال (که دانشجویان می‌بینند)</label>
+                    <div class="catalog-term-input-row">
+                        <input type="text" id="catalog-active-term" class="form-control"
+                               placeholder="مثال: 14051" maxlength="10" autocomplete="off">
+                        <button class="btn btn-custom" onclick="saveActiveTerm()">
+                            <span class="material-icons-round">how_to_reg</span> ثبت
+                        </button>
+                    </div>
+                </div>
+                <div class="catalog-term-field">
+                    <label for="catalog-term-start">تاریخ شروع ترم (پیش‌فرض «اول ترم» دانشجویان)</label>
+                    <div class="catalog-term-input-row">
+                        <input type="text" id="catalog-term-start" class="form-control"
+                               placeholder="۱۴۰۵/۰۷/۰۱" autocomplete="off">
+                        <button class="btn btn-outline" onclick="saveTermStart()">
+                            <span class="material-icons-round">event</span> ثبت
+                        </button>
+                    </div>
+                </div>
+                <span class="catalog-term-status" id="catalog-term-status"></span>
+            </div>
+
+            <!-- درون‌ریزی متن استاندارد -->
+            <div class="catalog-import-box" id="catalog-import-box">
+                <div class="catalog-import-title">
+                    <span class="material-icons-round">post_add</span>
+                    <span>درون‌ریزی از فایل استاندارد (هر خط = یک جلسه؛ جداکننده «|»)</span>
+                </div>
+                <div class="catalog-import-row">
+                    <input type="file" id="catalog-import-file" accept=".txt,.csv,text/plain"
+                           onchange="onImportFileSelected()">
+                    <textarea id="catalog-import-text" class="form-control" rows="4"
+                              placeholder="…یا متن فایل را اینجا بچسبانید"></textarea>
+                </div>
+                <div class="catalog-import-actions">
+                    <label>حالت:
+                        <select id="catalog-import-mode">
+                            <option value="update">به‌روزرسانی گروه‌های موجود</option>
+                            <option value="add_only">فقط افزودن (ردِ گروه‌های موجود)</option>
+                        </select>
+                    </label>
+                    <label class="catalog-skip-label">
+                        <input type="checkbox" id="catalog-skip-invalid">
+                        ردِ خطوط نامعتبر (خاموش = همه یا هیچ)
+                    </label>
+                    <button class="btn btn-outline" onclick="runImport('preview')">
+                        <span class="material-icons-round">visibility</span> پیش‌نمایش
+                    </button>
+                    <button class="btn btn-custom" onclick="runImport('commit')">
+                        <span class="material-icons-round">done_all</span> ثبت نهایی
+                    </button>
+                    <button class="btn btn-outline" id="dl-errors-btn" style="display:none;"
+                            onclick="downloadImportErrors()">
+                        <span class="material-icons-round">rule</span> دانلود گزارش خطاها
+                    </button>
+                </div>
+                <div id="catalog-import-result" class="catalog-import-result"></div>
+            </div>
+
+            <!-- جست‌وجو و فیلتر -->
+            <div class="catalog-toolbar">
+                <input type="text" id="catalog-q" class="form-control"
+                       placeholder="جست‌وجو: نام درس یا کد درسی…" autocomplete="off"
+                       oninput="debouncedCatalogList()">
+                <select id="catalog-major" class="form-control" onchange="loadCatalogList(1)">
+                    <option value="">همهٔ رشته‌ها</option>
+                </select>
+                <select id="catalog-term-filter" class="form-control" onchange="loadCatalogList(1)">
+                    <option value="">همهٔ ترم‌ها</option>
+                </select>
+                <label class="catalog-inactive-toggle">
+                    <input type="checkbox" id="catalog-inactive"
+                           onchange="loadCatalogList(1)">
+                    نمایش حذف‌شده‌ها
+                </label>
+                <span class="section-hint" id="catalog-total"></span>
+            </div>
+
+            <!-- فهرست دروس -->
+            <div id="catalog-list" class="catalog-courses"></div>
+
+            <!-- صفحه‌بندی -->
+            <div class="catalog-pagination" id="catalog-pagination"></div>
+        </div>
+    </div>
+
+</div><!-- /dashboard-container -->
+
+<!-- ===== Modal: تعریف کلاس خالی ===== -->
+<div id="master-modal" class="modal-overlay" onclick="handleOverlayClick(event,'master-modal')">
+    <div class="glass-modal modal-card" onclick="event.stopPropagation()">
+        <div class="modal-card-header">
+            <h3>
+                <span class="material-icons-round" style="vertical-align:middle; font-size:1.2rem;">meeting_room</span>
+                تعریف کلاس‌های خالی
+            </h3>
+            <button class="modal-close-btn" onclick="closeModal('master-modal')">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <div class="slot-info-display">
+            <span class="material-icons-round">schedule</span>
+            <span id="master-slot-info-text">—</span>
+        </div>
+        <div class="form-group">
+            <label class="form-label">
+                <span class="material-icons-round form-label-icon">meeting_room</span>
+                شماره کلاس‌ها (با کاما جدا کنید)
+            </label>
+            <input type="text" id="master-rooms-input" class="form-control"
+                   placeholder="مثال: 101, 102, آمفی"
+                   onkeydown="if(event.key==='Enter') saveSlotData()">
+        </div>
+        <p style="font-size:.8rem; color:var(--text-secondary); margin-top:-.5rem; margin-bottom:1rem;">
+            برای پاک کردن، فیلد را خالی بگذارید و ذخیره کنید.
+        </p>
+        <div class="modal-actions">
+            <button class="btn btn-custom" onclick="saveSlotData()">
+                <span class="material-icons-round">save</span> ذخیره
+            </button>
+            <button class="btn btn-outline" onclick="closeModal('master-modal')">انصراف</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Modal: افزودن/ویرایش درس (کاتالوگ) ===== -->
+<div id="course-form-modal" class="modal-overlay" onclick="handleOverlayClick(event,'course-form-modal')">
+    <div class="glass-modal modal-card" onclick="event.stopPropagation()">
+        <div class="modal-card-header">
+            <h3 id="course-form-title">افزودن درس</h3>
+            <button class="modal-close-btn" onclick="closeModal('course-form-modal')">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <form id="course-form" onsubmit="submitCourseForm(event)">
+            <input type="hidden" id="course-form-id" value="">
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">tag</span>
+                    کد درسی
+                </label>
+                <input type="text" id="course-form-code" class="form-control"
+                       placeholder="مثال: 3110234" maxlength="20" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">menu_book</span>
+                    نام درس
+                </label>
+                <input type="text" id="course-form-name" class="form-control"
+                       placeholder="مثال: سیستم‌های نهفته و بی‌درنگ"
+                       maxlength="200" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">calculate</span>
+                    واحد (بزرگ‌تر از صفر؛ اعشار مجاز)
+                </label>
+                <input type="text" id="course-form-units" class="form-control"
+                       inputmode="decimal" placeholder="مثال: ۳ یا ۱٫۵" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">school</span>
+                    رشته (اختیاری)
+                </label>
+                <input type="text" id="course-form-major" class="form-control"
+                       placeholder="مثال: مهندسی کامپیوتر" maxlength="100" autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-custom">
+                    <span class="material-icons-round">save</span> ذخیره
+                </button>
+                <button type="button" class="btn btn-outline"
+                        onclick="closeModal('course-form-modal')">انصراف</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== Modal: افزودن/ویرایش گروه ===== -->
+<div id="section-form-modal" class="modal-overlay" onclick="handleOverlayClick(event,'section-form-modal')">
+    <div class="glass-modal modal-card" onclick="event.stopPropagation()">
+        <div class="modal-card-header">
+            <h3 id="section-form-title">افزودن گروه</h3>
+            <button class="modal-close-btn" onclick="closeModal('section-form-modal')">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <p class="slot-info-display">
+            <span class="material-icons-round">menu_book</span>
+            <span id="section-form-course">—</span>
+        </p>
+        <form id="section-form" onsubmit="submitSectionForm(event)">
+            <input type="hidden" id="section-form-course-id" value="">
+            <input type="hidden" id="section-form-id" value="">
+            <div class="catalog-two-col">
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons-round form-label-icon">calendar_month</span>
+                        ترم
+                    </label>
+                    <input type="text" id="section-form-term" class="form-control"
+                           placeholder="مثال: 14051" maxlength="10" autocomplete="off" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons-round form-label-icon">group</span>
+                        شمارهٔ گروه
+                    </label>
+                    <input type="text" id="section-form-group" class="form-control"
+                           inputmode="numeric" placeholder="مثال: ۲" autocomplete="off" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">person</span>
+                    نام استاد
+                </label>
+                <input type="text" id="section-form-teacher" class="form-control"
+                       placeholder="مثال: دکتر رمضانی" maxlength="100" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">pin_drop</span>
+                    محل پیش‌فرض گروه
+                </label>
+                <input type="text" id="section-form-location" class="form-control"
+                       placeholder="مثال: کلاس ۲۱۰" maxlength="100" autocomplete="off">
+            </div>
+            <label class="catalog-inactive-toggle" id="section-form-active-wrap"
+                   style="display:none;">
+                <input type="checkbox" id="section-form-active">
+                فعال است (برداشتن تیک = حذف نرم گروه)
+            </label>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-custom">
+                    <span class="material-icons-round">save</span> ذخیره
+                </button>
+                <button type="button" class="btn btn-outline"
+                        onclick="closeModal('section-form-modal')">انصراف</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== Modal: افزودن/ویرایش جلسهٔ هفتگی ===== -->
+<div id="meeting-form-modal" class="modal-overlay" onclick="handleOverlayClick(event,'meeting-form-modal')">
+    <div class="glass-modal modal-card" onclick="event.stopPropagation()">
+        <div class="modal-card-header">
+            <h3 id="meeting-form-title">افزودن جلسه</h3>
+            <button class="modal-close-btn" onclick="closeModal('meeting-form-modal')">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <p class="slot-info-display">
+            <span class="material-icons-round">event</span>
+            <span id="meeting-form-section">—</span>
+        </p>
+        <form id="meeting-form" onsubmit="submitMeetingForm(event)">
+            <input type="hidden" id="meeting-form-id" value="">
+            <input type="hidden" id="meeting-form-section-id" value="">
+            <div class="catalog-two-col">
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons-round form-label-icon">event</span>
+                        روز
+                    </label>
+                    <select id="meeting-form-day" class="form-control" required>
+                        {% for key, fa_name in schedule_all_day_names_fa.items() %}
+                            <option value="{{ key }}">{{ fa_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons-round form-label-icon">repeat</span>
+                        نوع هفته
+                    </label>
+                    <select id="meeting-form-week" class="form-control" required>
+                        <option value="all">هر هفته</option>
+                        <option value="odd">فرد</option>
+                        <option value="even">زوج</option>
+                    </select>
+                </div>
+            </div>
+            <div class="catalog-two-col">
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons-round form-label-icon">schedule</span>
+                        شروع (HH:MM)
+                    </label>
+                    <input type="time" id="meeting-form-start" class="form-control"
+                           value="08:00" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons-round form-label-icon">schedule</span>
+                        پایان (HH:MM)
+                    </label>
+                    <input type="time" id="meeting-form-end" class="form-control"
+                           value="10:00" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">pin_drop</span>
+                    محل این جلسه (خالی = محل گروه)
+                </label>
+                <input type="text" id="meeting-form-location" class="form-control"
+                       placeholder="مثال: آزمایشگاه ۲" maxlength="100" autocomplete="off">
+            </div>
+            <!-- هشدارهای غیربلوکهٔ تداخل استاد/مکان -->
+            <div class="catalog-warnings" id="meeting-warnings"></div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-custom">
+                    <span class="material-icons-round">save</span> ذخیره
+                </button>
+                <button type="button" class="btn btn-outline"
+                        onclick="closeModal('meeting-form-modal')">انصراف</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== Jalali Datepicker Popup ===== -->
+<div id="jalali-picker-popup" class="jalali-popup-overlay" onclick="closeJalaliPopup(event)">
+    <div class="jalali-picker" onclick="event.stopPropagation()">
+        <div class="jalali-picker-header">
+            <button type="button" class="jalali-nav-btn" onclick="changeJalaliMonth(-1)">
+                <span class="material-icons-round">chevron_right</span>
+            </button>
+            <div class="jalali-month-year">
+                <span id="jalali-month-label">—</span>
+                <span id="jalali-year-label">—</span>
+            </div>
+            <button type="button" class="jalali-nav-btn" onclick="changeJalaliMonth(1)">
+                <span class="material-icons-round">chevron_left</span>
+            </button>
+        </div>
+        <div class="jalali-weekdays">
+            <span>ش</span><span>ی</span><span>د</span><span>س</span>
+            <span>چ</span><span>پ</span><span>ج</span>
+        </div>
+        <div class="jalali-days-grid" id="jalali-days-grid"></div>
+        <div class="jalali-picker-footer">
+            <button type="button" class="jalali-today-btn" onclick="goToToday()">
+                <span class="material-icons-round">today</span> امروز
+            </button>
+            <button type="button" class="jalali-close-btn" onclick="document.getElementById('jalali-picker-popup').classList.remove('open')">
+                بستن
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== Styles ==================== -->
+<style>
+/* ---------- Buttons ---------- */
+.btn{ display:inline-flex; align-items:center; gap:0.45rem; padding:0.65rem 1.2rem; border-radius:var(--radius-pill); font-weight:600; font-size:0.88rem; border:1px solid transparent; cursor:pointer; font-family:inherit; transition:all 0.25s var(--ease); text-decoration:none; }
+.btn .material-icons-round{ font-size:1.05rem; }
+.btn-custom{ background:linear-gradient(135deg, var(--brand-light), var(--brand)); color:#03161A; box-shadow:0 5px 16px rgba(38,198,218,0.35); }
+.btn-custom:hover{ transform:translateY(-2px); box-shadow:0 8px 22px rgba(38,198,218,0.5); }
+.btn-outline{ background:var(--glass-bg-strong); border:1px solid var(--glass-border-strong); color:var(--text-primary); }
+.btn-outline:hover{ background:rgba(255,255,255,0.1); }
+.form-control, .form-select{ width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border-strong); border-radius:var(--radius-sm); padding:0.7rem 1rem; color:var(--text-primary); font-family:'Vazirmatn',sans-serif; font-size:0.92rem; transition:border-color 0.2s, box-shadow 0.2s; }
+.form-control:focus{ outline:none; border-color:var(--brand-light); box-shadow:0 0 0 3px rgba(38,198,218,0.15); }
+
+/* ---------- Admin Tab Bar ---------- */
+.admin-tabs-bar{ display:flex; gap:.5rem; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:var(--radius-md); padding:.5rem; margin-bottom:1.5rem; box-shadow:var(--shadow-glass); backdrop-filter:blur(14px); }
+.dash-tab{ flex:1; display:flex; align-items:center; justify-content:center; gap:.4rem; padding:.75rem 1rem; border:none; background:transparent; border-radius:var(--radius-sm); cursor:pointer; font-family:inherit; font-size:.9rem; font-weight:500; color:var(--text-secondary); transition:all .25s; position:relative; }
+.dash-tab .material-icons-round{ font-size:1.1rem; }
+.dash-tab:hover{ background:rgba(255,255,255,0.06); color:var(--brand-light); }
+.dash-tab.active{ background:linear-gradient(135deg, var(--brand-light), var(--brand)); color:#03161A; box-shadow:0 4px 14px rgba(38,198,218,.35); }
+.tab-badge{ background:var(--error); color:white; border-radius:20px; padding:.05rem .5rem; font-size:.72rem; font-weight:700; }
+.dash-tab.active .tab-badge{ background:rgba(3,22,26,.3); color:#03161A; }
+@media (max-width:600px){ .dash-tab span:not(.material-icons-round){ display:none; } .dash-tab{ padding:.75rem; } }
+
+/* ---------- Tab Content ---------- */
+.tab-content{ display:none; animation:fadeInTab .3s ease; }
+.tab-content.active{ display:block; }
+@keyframes fadeInTab{ from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+/* ---------- Section Card ---------- */
+.section-card{ background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:var(--radius-lg); padding:1.6rem; backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%); box-shadow:var(--shadow-glass); margin-bottom:1.5rem; }
+.section-card-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:.75rem; }
+.section-card-title{ display:flex; align-items:center; gap:.5rem; color:var(--brand-light); }
+.section-card-title h2{ font-size:1.15rem; font-weight:700; margin:0; }
+.section-card-title .material-icons-round{ font-size:1.4rem; }
+.section-hint{ font-size:.85rem; color:var(--text-secondary); background:rgba(38,198,218,.06); border:1px solid rgba(38,198,218,.15); border-radius:var(--radius-sm); padding:.55rem .9rem; margin-bottom:1.25rem; }
+.section-hint code{ background:rgba(38,198,218,.1); color:var(--brand-light); padding:.1rem .3rem; border-radius:4px; font-size:.85em; }
+
+/* ---------- Schedule Grid ---------- */
+.schedule-wrapper{ overflow-x:auto; }
+.schedule-grid{ display:grid; grid-template-columns:70px repeat(5,1fr); gap:1px; background:var(--glass-border-strong); border:1px solid var(--glass-border-strong); border-radius:var(--radius-md); overflow:hidden; min-width:560px; }
+.schedule-header{ background:var(--glass-bg-strong); padding:.75rem .5rem; text-align:center; font-weight:700; font-size:.85rem; color:var(--text-secondary); }
+.corner-cell{ background:var(--glass-bg-strong); }
+.schedule-time{ background:var(--glass-bg-strong); padding:.75rem .25rem; text-align:center; font-size:.8rem; font-weight:600; color:var(--text-secondary); display:flex; align-items:center; justify-content:center; }
+.schedule-cell{ background:var(--glass-bg); min-height:70px; padding:.4rem; position:relative; }
+.clickable-cell{ cursor:pointer; transition:background .18s; }
+.clickable-cell:hover{ background:rgba(38,198,218,.08); }
+.clickable-cell:hover::after{ content:'+'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:1.6rem; color:var(--brand-light); opacity:.3; font-weight:300; pointer-events:none; }
+.master-cell.has-data:hover::after{ display:none; }
+.master-cell.has-data{ background:rgba(38,198,218,.1); border-right:3px solid var(--brand-light); }
+.master-cell-content{ font-size:.8rem; font-weight:600; color:var(--brand-light); line-height:1.4; }
+.master-cell-room-pill{ display:inline-block; background:rgba(38,198,218,.15); color:var(--brand-light); padding:.15rem .45rem; border-radius:20px; font-size:.72rem; margin:1px; border:1px solid rgba(38,198,218,.25); }
+.legend-row{ display:flex; gap:1.5rem; margin-top:1rem; flex-wrap:wrap; }
+.legend-item{ display:flex; align-items:center; gap:.4rem; font-size:.82rem; color:var(--text-secondary); }
+.legend-dot{ width:12px; height:12px; border-radius:50%; }
+
+/* ---------- Requests ---------- */
+.requests-count-badge{ background:rgba(255,92,114,.12); color:var(--error); padding:.3rem .85rem; border-radius:20px; font-size:.82rem; font-weight:700; border:1px solid rgba(255,92,114,.25); }
+.requests-grid{ display:grid; gap:1rem; }
+.request-card{ border:1px solid var(--glass-border); border-radius:var(--radius-md); overflow:hidden; background:var(--glass-bg-strong); transition:box-shadow .2s, border-color .2s; }
+.request-card:hover{ box-shadow:var(--shadow-glass); border-color:rgba(38,198,218,.3); }
+.req-card-header{ display:flex; justify-content:space-between; align-items:center; padding:.85rem 1rem; background:var(--glass-bg); border-bottom:1px solid var(--glass-border); gap:.75rem; flex-wrap:wrap; }
+.req-user-info{ display:flex; align-items:center; gap:.7rem; }
+.req-user-avatar{ width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg, var(--brand-light), var(--brand)); color:#03161A; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1rem; flex-shrink:0; }
+.req-user-details{ display:flex; flex-direction:column; gap:.1rem; }
+.req-user-name{ font-weight:700; font-size:.95rem; color:var(--text-primary); }
+.req-student-id{ font-size:.78rem; color:var(--text-secondary); }
+.req-room-badge{ display:flex; align-items:center; gap:.3rem; background:linear-gradient(135deg, var(--brand-light), var(--brand)); color:#03161A; padding:.3rem .85rem; border-radius:20px; font-size:.85rem; font-weight:700; }
+.req-card-body{ padding:.85rem 1rem; border-bottom:1px solid var(--glass-border); }
+.req-meta{ display:flex; gap:1.25rem; flex-wrap:wrap; margin-bottom:.6rem; }
+.req-meta-item{ display:flex; align-items:center; gap:.3rem; font-size:.83rem; color:var(--text-secondary); }
+.req-meta-item .material-icons-round{ font-size:.95rem; color:var(--brand-light); }
+.req-reason{ display:flex; align-items:flex-start; gap:.4rem; font-size:.88rem; color:var(--text-primary); }
+.req-reason .material-icons-round{ font-size:.95rem; color:var(--brand-light); flex-shrink:0; margin-top:2px; }
+.req-card-actions{ display:flex; gap:.6rem; justify-content:flex-end; padding:.75rem 1rem; }
+.btn-approve{ display:inline-flex; align-items:center; gap:.3rem; background:var(--success); color:white; padding:.55rem 1.2rem; border-radius:var(--radius-pill); text-decoration:none; font-size:.88rem; font-weight:600; transition:opacity .2s,transform .15s; border:none; cursor:pointer; font-family:inherit; }
+.btn-approve .material-icons-round{ font-size:1rem; }
+.btn-approve:hover{ opacity:.9; transform:translateY(-1px); }
+.btn-reject{ display:inline-flex; align-items:center; gap:.3rem; background:transparent; color:var(--error); padding:.55rem 1.2rem; border-radius:var(--radius-pill); border:1.5px solid var(--error); text-decoration:none; font-size:.88rem; font-weight:600; transition:background .2s,transform .15s; cursor:pointer; font-family:inherit; }
+.btn-reject .material-icons-round{ font-size:1rem; }
+.btn-reject:hover{ background:rgba(255,92,114,.1); transform:translateY(-1px); }
+
+/* ---------- Cancel Logic Hint ---------- */
+.cancel-logic-hint{ display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:stretch; }
+.cancel-logic-item{ flex:1; min-width:200px; display:flex; gap:.75rem; align-items:flex-start; padding:1rem; border-radius:var(--radius-sm); border:1.5px solid; }
+.cancel-logic-item .material-icons-round{ font-size:1.5rem; flex-shrink:0; margin-top:.1rem; }
+.cancel-logic-item strong{ display:block; font-size:.92rem; margin-bottom:.25rem; }
+.cancel-logic-item p{ font-size:.8rem; margin:0; line-height:1.5; opacity:.85; }
+.cancel-logic-specific{ border-color:rgba(38,198,218,.3); background:rgba(38,198,218,.06); color:var(--brand-light); }
+.cancel-logic-all{ border-color:rgba(255,92,114,.3); background:rgba(255,92,114,.06); color:var(--error); }
+.cancel-logic-divider{ display:flex; align-items:center; color:var(--text-secondary); font-size:1.5rem; }
+
+/* ---------- Cancel Form ---------- */
+.cancelled-form{ background:var(--glass-bg-strong); border-radius:var(--radius-md); padding:1.5rem; border:1px solid var(--glass-border); }
+.form-two-col{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin-bottom:1rem; }
+.form-three-col{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; }
+.form-group{ margin-bottom:.9rem; }
+.cancel-date-section{ background:rgba(38,198,218,.05); border:1px dashed rgba(38,198,218,.25); border-radius:var(--radius-sm); padding:1rem; margin-top:.75rem; }
+.cancel-date-hint{ display:flex; align-items:center; gap:.35rem; font-size:.84rem; color:var(--text-secondary); margin-bottom:.75rem; }
+.cancel-date-hint .material-icons-round{ font-size:.95rem; color:var(--brand-light); }
+.form-label{ display:flex; align-items:center; gap:.3rem; font-weight:600; font-size:.88rem; margin-bottom:.45rem; flex-wrap:wrap; color:var(--text-primary); }
+.form-label-icon{ font-size:.95rem; color:var(--brand-light); }
+.form-label-hint{ font-weight:400; font-size:.78rem; color:var(--text-secondary); }
+.required-star{ color:var(--error); margin-right:.15rem; }
+
+/* ---------- Time Slot Chips ---------- */
+.time-slots-row{ display:flex; flex-wrap:wrap; gap:.5rem; }
+.time-slot-chip{ cursor:pointer; }
+.time-slot-chip input[type="radio"]{ display:none; }
+.time-slot-chip span{ display:inline-flex; align-items:center; padding:.38rem .9rem; border-radius:20px; font-size:.83rem; font-weight:600; border:1.5px solid var(--glass-border-strong); background:rgba(255,255,255,0.03); color:var(--text-secondary); transition:all .18s; cursor:pointer; user-select:none; }
+.time-slot-chip input:checked + span{ border-color:var(--brand-light); background:rgba(38,198,218,.14); color:var(--brand-light); }
+.time-slot-chip:hover span{ border-color:var(--brand-light); color:var(--brand-light); }
+
+/* ---------- Jalali Input ---------- */
+.jalali-input-wrapper{ position:relative; display:flex; align-items:center; }
+.jalali-input-wrapper .form-control.jalali-input{ padding-left:4.5rem; cursor:pointer; }
+.jalali-input-icon{ position:absolute; right:.85rem; color:var(--brand-light); font-size:1.15rem; pointer-events:none; }
+.jalali-clear-btn{ position:absolute; left:.5rem; background:none; border:none; cursor:pointer; color:var(--text-secondary); padding:.15rem; border-radius:50%; display:flex; align-items:center; transition:color .2s; line-height:1; font-size:0; }
+.jalali-clear-btn .material-icons-round{ font-size:.95rem; }
+.jalali-clear-btn:hover{ color:var(--error); }
+.jalali-clear-btn.hidden{ display:none; }
+
+/* ---------- Jalali Picker Popup ---------- */
+.jalali-popup-overlay{ display:none; position:fixed; inset:0; background:rgba(2,4,10,.7); backdrop-filter:blur(4px); z-index:3000; align-items:center; justify-content:center; }
+.jalali-popup-overlay.open{ display:flex; }
+.jalali-picker{ background:rgba(15,22,38,.96); border-radius:var(--radius-lg); box-shadow:0 20px 60px rgba(0,0,0,.6); padding:1.35rem; width:320px; animation:fadeInTab .2s ease; border:1px solid var(--glass-border-strong); backdrop-filter:blur(24px); }
+.jalali-picker-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+.jalali-month-year{ display:flex; gap:.5rem; font-weight:700; font-size:1rem; color:var(--text-primary); }
+.jalali-nav-btn{ background:var(--glass-bg-strong); border:1px solid var(--glass-border-strong); border-radius:var(--radius-sm); cursor:pointer; padding:.25rem; color:var(--text-secondary); display:flex; align-items:center; transition:all .18s; }
+.jalali-nav-btn:hover{ background:rgba(38,198,218,.1); color:var(--brand-light); border-color:var(--brand-light); }
+.jalali-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); text-align:center; margin-bottom:.4rem; }
+.jalali-weekdays span{ font-size:.78rem; font-weight:700; color:var(--text-secondary); padding:.3rem 0; }
+.jalali-days-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.jalali-day{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); cursor:pointer; font-size:.88rem; border:none; background:none; font-family:inherit; color:var(--text-primary); transition:background .15s, color .15s; }
+.jalali-day:hover{ background:rgba(38,198,218,.12); color:var(--brand-light); }
+.jalali-day.selected{ background:linear-gradient(135deg, var(--brand-light), var(--brand)); color:#03161A; font-weight:700; box-shadow:0 3px 10px rgba(38,198,218,.4); }
+.jalali-day.today{ border:1.5px solid var(--brand-light); color:var(--brand-light); font-weight:600; }
+.jalali-day.today.selected{ color:#03161A; border-color:transparent; }
+.jalali-day.other-month{ color:var(--glass-border-strong); cursor:default; }
+.jalali-day.other-month:hover{ background:none; }
+.jalali-day.empty{ background:none; cursor:default; }
+.jalali-picker-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:1rem; padding-top:.75rem; border-top:1px solid var(--glass-border); }
+.jalali-today-btn{ display:flex; align-items:center; gap:.3rem; background:none; border:none; cursor:pointer; color:var(--brand-light); font-size:.85rem; font-weight:600; font-family:inherit; padding:.3rem .6rem; border-radius:var(--radius-sm); transition:background .15s; }
+.jalali-today-btn .material-icons-round{ font-size:1rem; }
+.jalali-today-btn:hover{ background:rgba(38,198,218,.1); }
+.jalali-close-btn{ background:var(--glass-bg-strong); border:1px solid var(--glass-border-strong); border-radius:var(--radius-sm); cursor:pointer; padding:.3rem .85rem; font-size:.85rem; font-weight:600; color:var(--text-secondary); font-family:inherit; transition:all .15s; }
+.jalali-close-btn:hover{ border-color:var(--brand-light); color:var(--brand-light); }
+
+/* ---------- Cancelled List ---------- */
+.cancelled-list-section{ margin-top:2rem; }
+.cancelled-list-title{ display:flex; align-items:center; gap:.5rem; font-size:1rem; color:var(--text-primary); margin-bottom:1rem; padding-bottom:.75rem; border-bottom:1px solid var(--glass-border); }
+.cancelled-list-title .material-icons-round{ color:var(--brand-light); }
+.list-count{ background:linear-gradient(135deg, var(--brand-light), var(--brand)); color:#03161A; border-radius:20px; padding:.1rem .55rem; font-size:.75rem; font-weight:800; }
+.cancelled-items-grid{ display:grid; gap:.75rem; }
+.cancelled-item-card{ border:1px solid var(--glass-border); border-right:4px solid var(--error); border-radius:var(--radius-sm); padding:.9rem 1.05rem; background:rgba(255,92,114,.03); transition:box-shadow .2s; }
+.cancelled-item-card:hover{ box-shadow:var(--shadow-glass); }
+.cancelled-item-header{ display:flex; justify-content:space-between; align-items:center; gap:.75rem; flex-wrap:wrap; }
+.cancelled-item-info{ display:flex; flex-direction:column; gap:.3rem; }
+.cancelled-item-top{ display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.cancelled-course{ font-weight:700; font-size:.95rem; color:var(--text-primary); }
+.cancelled-course.muted{ color:var(--text-secondary); font-style:italic; }
+.cancelled-prof{ display:flex; align-items:center; gap:.25rem; font-size:.82rem; color:var(--text-secondary); }
+.cancelled-date-badge{ display:flex; align-items:center; gap:.25rem; font-size:.8rem; color:var(--error); background:rgba(255,92,114,.1); padding:.22rem .65rem; border-radius:20px; white-space:nowrap; border:1px solid rgba(255,92,114,.2); }
+.cancelled-timeslot-badge{ display:inline-flex; align-items:center; gap:.2rem; font-size:.75rem; font-weight:600; padding:.15rem .55rem; border-radius:20px; }
+.cancelled-timeslot-badge:not(.all-day){ background:rgba(38,198,218,.12); color:var(--brand-light); border:1px solid rgba(38,198,218,.2); }
+.cancelled-timeslot-badge.all-day{ background:rgba(255,181,71,.12); color:var(--warning); border:1px solid rgba(255,181,71,.25); }
+.cancelled-item-desc{ display:flex; align-items:center; gap:.3rem; font-size:.82rem; color:var(--text-secondary); margin-top:.5rem; padding-top:.5rem; border-top:1px dashed var(--glass-border); }
+.delete-cancel-btn{ background:transparent; border:1px solid var(--glass-border-strong); color:var(--text-secondary); cursor:pointer; border-radius:var(--radius-sm); padding:.32rem .5rem; display:flex; align-items:center; transition:color .2s,border-color .2s,background .2s; }
+.delete-cancel-btn .material-icons-round{ font-size:.95rem; }
+.delete-cancel-btn:hover{ color:var(--error); border-color:var(--error); background:rgba(255,92,114,.1); }
+
+/* ---------- Modal ---------- */
+.modal-overlay{ display:none; position:fixed; inset:0; background:rgba(2,4,10,.72); backdrop-filter:blur(5px); z-index:2000; align-items:center; justify-content:center; padding:1rem; }
+.modal-overlay.open{ display:flex; animation:fadeInTab .2s ease; }
+.modal-card{ background:rgba(15,22,38,.96); border:1px solid var(--glass-border-strong); border-radius:var(--radius-lg); padding:1.6rem; width:100%; max-width:440px; box-shadow:0 24px 70px rgba(0,0,0,.6); max-height:90vh; overflow-y:auto; backdrop-filter:blur(24px); }
+.modal-card-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; }
+.modal-card-header h3{ font-size:1.1rem; color:var(--text-primary); margin:0; }
+.modal-close-btn{ background:var(--glass-bg-strong); border:1px solid var(--glass-border-strong); cursor:pointer; color:var(--text-secondary); padding:.3rem; border-radius:50%; display:flex; align-items:center; transition:background .2s; }
+.modal-close-btn:hover{ background:rgba(255,92,114,.1); color:var(--error); border-color:var(--error); }
+.slot-info-display{ display:flex; align-items:center; gap:.5rem; background:rgba(38,198,218,.08); border:1px solid rgba(38,198,218,.2); border-radius:var(--radius-sm); padding:.75rem 1rem; margin-bottom:1.25rem; font-weight:600; color:var(--brand-light); font-size:.9rem; }
+.slot-info-display .material-icons-round{ font-size:1.1rem; }
+.modal-actions{ display:flex; gap:.6rem; margin-top:1.25rem; }
+
+/* ---------- Empty State ---------- */
+.empty-state-full{ text-align:center; padding:3rem 1rem; color:var(--text-secondary); }
+.empty-state-full .material-icons-round{ font-size:3.5rem; margin-bottom:.75rem; display:block; }
+.empty-state-full h3{ margin-bottom:.5rem; color:var(--text-primary); }
+
+/* ---------- Holiday styling ---------- */
+.jalali-day.holiday{ color:var(--error) !important; font-weight:700; position:relative; }
+.jalali-day.holiday::after{ content:''; position:absolute; bottom:3px; left:50%; transform:translateX(-50%); width:4px; height:4px; background:var(--error); border-radius:50%; }
+.jalali-day.holiday.selected{ color:#03161A !important; background:var(--error) !important; box-shadow:0 2px 8px rgba(255,92,114,.4); }
+.jalali-day.holiday.selected::after{ background:rgba(255,255,255,.6); }
+.jalali-calendar-loading{ grid-column:span 7; text-align:center; padding:1.25rem 0; color:var(--text-secondary); font-size:.85rem; display:flex; align-items:center; justify-content:center; gap:.4rem; }
+.jalali-holiday-legend{ display:flex; align-items:center; gap:.4rem; font-size:.75rem; color:var(--error); margin-top:.6rem; padding-top:.6rem; border-top:1px dashed var(--glass-border); justify-content:center; opacity:.85; }
+.jalali-holiday-legend span.dot{ width:6px; height:6px; background:var(--error); border-radius:50%; display:inline-block; flex-shrink:0; }
+
+/* ---------- Catalog: مدیریت دروس و گروه‌ها (Part B1) ---------- */
+.catalog-header-actions{ display:flex; gap:.5rem; flex-wrap:wrap; }
+.catalog-term-bar{ display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;
+    background:rgba(38,198,218,.05); border:1px solid rgba(38,198,218,.18);
+    border-radius:var(--radius-md); padding:.85rem 1rem; margin-bottom:1rem; }
+.catalog-term-field{ display:flex; flex-direction:column; gap:.35rem; min-width:230px; }
+.catalog-term-field label{ font-size:.75rem; font-weight:700; color:var(--text-secondary); }
+.catalog-term-input-row{ display:flex; gap:.45rem; }
+.catalog-term-input-row .form-control{ min-width:0; }
+.catalog-term-status{ font-size:.75rem; color:var(--brand-light); font-weight:700;
+    padding-bottom:.55rem; }
+.catalog-import-box{ border:1px dashed var(--glass-border-strong); border-radius:var(--radius-md);
+    padding:.85rem 1rem; margin-bottom:1.1rem; background:rgba(255,255,255,.015); }
+.catalog-import-title{ display:flex; align-items:center; gap:.45rem; font-size:.85rem;
+    font-weight:800; color:var(--text-primary); margin-bottom:.6rem; }
+.catalog-import-title .material-icons-round{ color:var(--brand-light); }
+.catalog-import-row{ display:flex; flex-direction:column; gap:.5rem; margin-bottom:.6rem; }
+.catalog-import-row textarea{ font-size:.78rem; font-family:monospace, Vazirmatn, sans-serif;
+    direction:ltr; text-align:left; }
+.catalog-import-actions{ display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; font-size:.78rem; }
+.catalog-import-actions select{ background:var(--bg-2); color:var(--text-primary);
+    border:1px solid var(--glass-border-strong); border-radius:var(--radius-sm);
+    padding:.3rem .5rem; font-family:inherit; font-size:.78rem; }
+.catalog-skip-label{ display:flex; align-items:center; gap:.35rem; color:var(--text-secondary); }
+.catalog-import-result{ margin-top:.7rem; font-size:.8rem; display:none; }
+.catalog-import-result.open{ display:block; }
+.import-summary{ display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.5rem; }
+.import-chip{ font-size:.72rem; font-weight:800; padding:.18rem .6rem; border-radius:20px;
+    background:var(--glass-bg-strong); border:1px solid var(--glass-border); color:var(--text-primary); }
+.import-chip.ok{ background:rgba(76,175,80,.14); border-color:rgba(76,175,80,.4); color:#A5D6A7; }
+.import-chip.bad{ background:rgba(255,92,114,.12); border-color:rgba(255,92,114,.4); color:#FF8A9B; }
+.import-chip.warn{ background:rgba(255,181,71,.12); border-color:rgba(255,181,71,.4); color:var(--warning); }
+.import-errors{ max-height:200px; overflow-y:auto; margin:.35rem 0 0; padding-right:1.2rem;
+    font-size:.75rem; color:var(--error); }
+.import-errors li{ margin-bottom:.15rem; }
+.import-plan{ max-height:220px; overflow-y:auto; border-top:1px dashed var(--glass-border);
+    margin-top:.5rem; padding-top:.5rem; }
+.import-plan-row{ display:flex; align-items:center; gap:.5rem; font-size:.75rem;
+    padding:.25rem 0; flex-wrap:wrap; }
+.catalog-toolbar{ display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; margin-bottom:.9rem; }
+.catalog-toolbar .form-control{ max-width:260px; }
+.catalog-toolbar select.form-control{ max-width:170px; }
+.catalog-inactive-toggle{ display:flex; align-items:center; gap:.4rem; font-size:.78rem;
+    color:var(--text-secondary); cursor:pointer; }
+.catalog-courses{ display:flex; flex-direction:column; gap:.7rem; }
+.catalog-empty{ text-align:center; color:var(--text-secondary); padding:2rem 1rem;
+    border:1px dashed var(--glass-border-strong); border-radius:var(--radius-md); font-size:.85rem; }
+.catalog-course-card{ border:1px solid var(--glass-border); border-radius:var(--radius-md);
+    background:var(--glass-bg-strong); overflow:hidden; }
+.catalog-course-card.inactive .catalog-course-head{ opacity:.6; filter:grayscale(.7); }
+.catalog-course-head{ display:flex; align-items:center; gap:.7rem; flex-wrap:wrap;
+    padding:.7rem .9rem; cursor:pointer; }
+.catalog-course-head:hover{ background:rgba(38,198,218,.05); }
+.catalog-course-main{ flex:1; min-width:220px; display:flex; flex-direction:column; gap:.2rem; }
+.catalog-course-name{ font-size:.92rem; font-weight:800; color:var(--text-primary);
+    overflow-wrap:anywhere; display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; }
+.catalog-course-sub{ font-size:.72rem; color:var(--text-secondary); display:flex;
+    gap:.7rem; flex-wrap:wrap; }
+.catalog-course-actions{ display:flex; gap:.4rem; flex-wrap:wrap; }
+.catalog-chip{ font-size:.68rem; font-weight:800; padding:.1rem .55rem; border-radius:20px;
+    white-space:nowrap; }
+.catalog-chip.code{ background:rgba(38,198,218,.14); color:var(--brand-light); }
+.catalog-chip.units{ background:rgba(156,103,243,.16); color:#B39DDB; }
+.catalog-chip.term{ background:rgba(255,181,71,.14); color:var(--warning); }
+.catalog-chip.count{ background:rgba(76,175,80,.16); color:#A5D6A7; }
+.catalog-chip.off{ background:rgba(255,92,114,.14); color:#FF8A9B; }
+.catalog-sections{ border-top:1px solid var(--glass-border); padding:.5rem .9rem .7rem;
+    display:flex; flex-direction:column; gap:.5rem; }
+.catalog-section-row{ border:1px solid var(--glass-border); border-radius:var(--radius-sm);
+    padding:.55rem .7rem; background:rgba(0,0,0,.14); }
+.catalog-section-row.inactive{ opacity:.6; border-style:dashed; }
+.catalog-section-head{ display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+.catalog-section-title{ font-size:.82rem; font-weight:800; color:var(--text-primary);
+    display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+.catalog-section-actions{ display:flex; gap:.35rem; margin-inline-start:auto; flex-wrap:wrap; }
+.catalog-meetings{ margin:.5rem 0 0; padding:.5rem .7rem .2rem 0; list-style:none;
+    border-top:1px dashed var(--glass-border); display:flex; flex-direction:column; gap:.35rem; }
+.catalog-meeting-line{ display:flex; align-items:center; gap:.5rem; font-size:.75rem;
+    color:var(--text-primary); flex-wrap:wrap; overflow-wrap:anywhere; }
+.catalog-meeting-line .material-icons-round{ font-size:.9rem; color:var(--brand-light); }
+.catalog-meeting-line.inactive{ text-decoration:line-through; opacity:.6; }
+.catalog-meeting-actions{ margin-inline-start:auto; display:flex; gap:.3rem; }
+.catalog-pagination{ display:flex; gap:.4rem; justify-content:center; align-items:center;
+    margin-top:1rem; flex-wrap:wrap; }
+.catalog-page-btn{ background:var(--glass-bg-strong); border:1px solid var(--glass-border);
+    color:var(--text-secondary); border-radius:var(--radius-sm); min-width:2.1rem;
+    padding:.3rem .55rem; cursor:pointer; font-family:inherit; font-size:.8rem;
+    font-weight:700; transition:all .15s; }
+.catalog-page-btn:hover:not(:disabled){ border-color:var(--brand-light); color:var(--brand-light); }
+.catalog-page-btn.active{ background:var(--brand-light); border-color:var(--brand-light);
+    color:#03161A; }
+.catalog-page-btn:disabled{ opacity:.4; cursor:not-allowed; }
+.catalog-warnings{ display:none; margin-top:.6rem; border:1px solid rgba(255,181,71,.45);
+    background:rgba(255,181,71,.08); border-radius:var(--radius-sm); padding:.6rem .75rem;
+    font-size:.78rem; color:var(--text-primary); }
+.catalog-warnings.open{ display:block; }
+.catalog-warnings b{ color:var(--warning); }
+.catalog-warnings ul{ margin:.3rem 0 0; padding-right:1.2rem; }
+.catalog-two-col{ display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
+.icon-btn-tiny{ background:transparent; border:1px solid var(--glass-border-strong);
+    color:var(--text-secondary); cursor:pointer; border-radius:var(--radius-sm);
+    padding:.22rem .35rem; display:inline-flex; align-items:center; transition:all .15s; }
+.icon-btn-tiny .material-icons-round{ font-size:.9rem; }
+.icon-btn-tiny:hover{ color:var(--brand-light); border-color:var(--brand-light); }
+.icon-btn-tiny.danger:hover{ color:var(--error); border-color:var(--error);
+    background:rgba(255,92,114,.1); }
+.icon-btn-tiny.restore:hover{ color:#A5D6A7; border-color:#66BB6A;
+    background:rgba(76,175,80,.1); }
+.btn.btn-danger-outline{ background:transparent; border:1px solid rgba(255,92,114,.5);
+    color:#FF8A9B; font-weight:700; }
+.btn.btn-danger-outline:hover{ background:rgba(255,92,114,.12); }
+
+@keyframes spin{ from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openAdminTab(id, btn) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.dash-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if (btn) btn.classList.add('active');
+}
+
+const masterData = [
+    {% for item in slots %}
+    { day: {{ item.day|tojson }}, time_slot: {{ item.time_slot|tojson }}, rooms: {{ item.rooms|tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+document.addEventListener('DOMContentLoaded', function () {
+    masterData.forEach(function (item) {
+        const cell = document.querySelector(`.master-cell[data-day="${item.day}"][data-time="${item.time_slot}"]`);
+        if (cell) { cell.dataset.rooms = item.rooms; renderMasterCell(cell, item.rooms); }
+    });
+});
+
+function renderMasterCell(cell, rooms) {
+    if (!rooms || !rooms.trim()) { cell.innerHTML = ''; cell.classList.remove('has-data'); return; }
+    const roomList = rooms.split(',').map(r => r.trim()).filter(Boolean);
+    cell.innerHTML = '<div class="master-cell-content">' +
+        roomList.map(r => `<span class="master-cell-room-pill">${r}</span>`).join('') +
+        '</div>';
+    cell.classList.add('has-data');
+}
+
+let activeCell = null;
+function editMasterSlot(cell) {
+    activeCell = cell;
+    const dayNames = { saturday:'شنبه', sunday:'یکشنبه', monday:'دوشنبه', tuesday:'سه‌شنبه', wednesday:'چهارشنبه' };
+    document.getElementById('master-slot-info-text').textContent =
+        (dayNames[cell.dataset.day] || cell.dataset.day) + ' — ساعت ' + cell.dataset.time.replace('-', ' تا ');
+    document.getElementById('master-rooms-input').value = cell.dataset.rooms || '';
+    openModal('master-modal');
+    setTimeout(() => document.getElementById('master-rooms-input').focus(), 150);
+}
+
+function saveSlotData() {
+    const rooms = document.getElementById('master-rooms-input').value.trim();
+    if (activeCell) { activeCell.dataset.rooms = rooms; renderMasterCell(activeCell, rooms); }
+    closeModal('master-modal');
+}
+
+function saveMasterSchedule() {
+    const payload = [];
+    document.querySelectorAll('.master-cell').forEach(function (cell) {
+        if (cell.dataset.rooms && cell.dataset.rooms.trim()) {
+            payload.push({ day: cell.dataset.day, time_slot: cell.dataset.time, rooms: cell.dataset.rooms.trim() });
+        }
+    });
+    const saveBtn = document.querySelector('[onclick="saveMasterSchedule()"]');
+    const orig = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;">sync</span> در حال ذخیره...';
+    csrfFetch('/admin/save_master_schedule', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    })
+    .then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.message || 'خطای سرور'); }))
+    .then(resp => {
+        if (resp.status === 'success') showToast('برنامه کلاس‌های خالی با موفقیت ذخیره شد ✓', 'success');
+        else throw new Error(resp.message || 'خطای ناشناخته');
+    })
+    .catch(err => showToast('خطا در ذخیره‌سازی: ' + err.message, 'error'))
+    .finally(() => { saveBtn.disabled = false; saveBtn.innerHTML = orig; });
+}
+
+function deleteCancelledClass(classId, btn) {
+    if (!confirm('آیا این لغو کلاس حذف شود؟')) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:.9rem;">sync</span>';
+    csrfFetch('/admin/delete_cancelled_class/' + classId, { method: 'POST' })
+    .then(r => r.json())
+    .then(resp => {
+        if (resp.status === 'success') {
+            const card = document.getElementById('cancel-card-' + classId);
+            if (card) { card.style.transition = 'opacity .3s,transform .3s'; card.style.opacity = '0'; card.style.transform = 'translateX(-10px)'; setTimeout(() => card.remove(), 300); }
+            showToast('لغو کلاس با موفقیت حذف شد', 'success');
+        } else throw new Error(resp.message || 'خطا');
+    })
+    .catch(err => {
+        showToast('خطا: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-icons-round">delete_outline</span>';
+    });
+}
+
+function openModal(id) { const el = document.getElementById(id); if (el) { el.classList.add('open'); document.body.style.overflow = 'hidden'; } }
+function closeModal(id) { const el = document.getElementById(id); if (el) { el.classList.remove('open'); document.body.style.overflow = ''; } }
+function handleOverlayClick(event, id) { if (event.target.id === id) closeModal(id); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal('master-modal'); });
+
+/* ── Jalali Conversion ── */
+function gregorianToJalali(gy, gm, gd) {
+    const g_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    const j_days = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+    if ((gy % 4 === 0 && gy % 100 !== 0) || gy % 400 === 0) g_days[1] = 29;
+    let g_day_no = 365 * (gy - 1600) + Math.floor((gy - 1600) / 4) - Math.floor((gy - 1600) / 100) + Math.floor((gy - 1600) / 400);
+    for (let i = 0; i < gm - 1; i++) g_day_no += g_days[i];
+    g_day_no += gd - 1;
+    let j_day_no = g_day_no - 79;
+    const j_np = Math.floor(j_day_no / 12053);
+    j_day_no %= 12053;
+    let jy = 979 + 33 * j_np + 4 * Math.floor(j_day_no / 1461);
+    j_day_no %= 1461;
+    if (j_day_no >= 366) { jy += Math.floor((j_day_no - 1) / 365); j_day_no = (j_day_no - 1) % 365; }
+    let jm = 12, jd = j_day_no + 1;
+    for (let i = 0; i < 11; i++) { if (j_day_no < j_days[i]) { jm = i + 1; jd = j_day_no + 1; break; } j_day_no -= j_days[i]; }
+    return [jy, jm, jd];
+}
+function jToG(jy, jm, jd) {
+    let j = jy - 474, jC = 474 + j % 2820;
+    let julianDay = jd + (jm <= 6 ? (jm - 1) * 31 : (jm - 1) * 30 + 6)
+        + Math.floor((jC * 682 - 110) / 2816) + (jC - 1) * 365
+        + Math.floor(j / 2820) * 1029983 + 1948319.5;
+    julianDay = Math.floor(julianDay + 0.5);
+    let a = julianDay + 32082, b = Math.floor((4*a+3)/146097);
+    let c = a - Math.floor(b*146097/4), d = Math.floor((4*c+3)/1461);
+    let e = c - Math.floor(d*1461/4), m = Math.floor((5*e+2)/153);
+    return [b*100+d-4800+Math.floor(m/10), m+3-12*Math.floor(m/10), e-Math.floor((153*m+2)/5)+1];
+}
+function jalaliMonthDays(jy, jm) {
+    if (jm <= 6) return 31;
+    if (jm <= 11) return 30;
+    const rem = ((jy - (jy > 0 ? 474 : 473)) % 2820 + 474 + 38) % 2820;
+    return [1,5,9,13,17,22,26,30].includes(rem % 474 % 29) ? 30 : 29;
+}
+function jalaliWeekday(jy, jm, jd) {
+    const [gy, gm, gd] = jToG(jy, jm, jd);
+    return (new Date(gy, gm - 1, gd).getDay() + 1) % 7;
+}
+const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+
+/* ── Holiday Cache ── */
+const holidayMonthCache = {};
+async function fetchHolidaysForMonth(jy, jm) {
+    const key = `${jy}/${jm}`;
+    if (holidayMonthCache[key]) return holidayMonthCache[key];
+    try {
+        const resp = await csrfFetch(`/api/holidays/${jy}/${jm}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const normalized = {};
+        for (const [k, v] of Object.entries(data)) normalized[parseInt(k)] = v;
+        holidayMonthCache[key] = normalized;
+        return normalized;
+    } catch (err) { console.warn('Holiday API fetch failed:', err); return {}; }
+}
+
+/* ── Datepicker State ── */
+let pickerTarget = null, pickerYear = 1400, pickerMonth = 1;
+let pickerSelected = { cancel: null, start: null, end: null };
+const _now = new Date();
+const [todayJY, todayJM, todayJD] = gregorianToJalali(_now.getFullYear(), _now.getMonth() + 1, _now.getDate());
+
+function openJalaliPicker(target) {
+    pickerTarget = target;
+    if (pickerSelected[target]) { pickerYear = pickerSelected[target].jy; pickerMonth = pickerSelected[target].jm; }
+    else { pickerYear = todayJY; pickerMonth = todayJM; }
+    renderJalaliCalendar();
+    document.getElementById('jalali-picker-popup').classList.add('open');
+}
+function closeJalaliPopup(evt) { if (evt && evt.target.id === 'jalali-picker-popup') document.getElementById('jalali-picker-popup').classList.remove('open'); }
+function goToToday() { pickerYear = todayJY; pickerMonth = todayJM; renderJalaliCalendar(); }
+function changeJalaliMonth(dir) {
+    pickerMonth += dir;
+    if (pickerMonth > 12) { pickerMonth = 1; pickerYear++; }
+    if (pickerMonth < 1)  { pickerMonth = 12; pickerYear--; }
+    renderJalaliCalendar();
+}
+
+async function renderJalaliCalendar() {
+    document.getElementById('jalali-month-label').textContent = JALALI_MONTHS[pickerMonth - 1];
+    document.getElementById('jalali-year-label').textContent = pickerYear;
+    const grid = document.getElementById('jalali-days-grid');
+    grid.innerHTML = `<div class="jalali-calendar-loading"><span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1rem;">sync</span> بارگذاری تعطیلات...</div>`;
+    const holidays = await fetchHolidaysForMonth(pickerYear, pickerMonth);
+    const days = jalaliMonthDays(pickerYear, pickerMonth);
+    const firstWd = jalaliWeekday(pickerYear, pickerMonth, 1);
+    const sel = pickerSelected[pickerTarget];
+    grid.innerHTML = '';
+    for (let i = 0; i < firstWd; i++) { const b = document.createElement('button'); b.type = 'button'; b.className = 'jalali-day empty'; grid.appendChild(b); }
+    for (let d = 1; d <= days; d++) {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'jalali-day'; btn.textContent = toPersianNum(d);
+        const colIndex = (firstWd + d - 1) % 7;
+        const isToday = (pickerYear === todayJY && pickerMonth === todayJM && d === todayJD);
+        const isSelected = sel && sel.jy === pickerYear && sel.jm === pickerMonth && sel.jd === d;
+        const dayData = holidays[d] || {};
+        const isHoliday = dayData.is_holiday || colIndex === 6;
+        const events = dayData.events || [];
+        if (isToday) btn.classList.add('today');
+        if (isSelected) btn.classList.add('selected');
+        if (isHoliday) { btn.classList.add('holiday'); btn.title = events.length > 0 ? events.join(' | ') : (colIndex === 6 ? 'جمعه' : 'تعطیل رسمی'); }
+        btn.onclick = () => selectJalaliDay(d);
+        grid.appendChild(btn);
+    }
+    const existingLegend = grid.parentElement.querySelector('.jalali-holiday-legend');
+    if (existingLegend) existingLegend.remove();
+    const legend = document.createElement('div');
+    legend.className = 'jalali-holiday-legend';
+    legend.innerHTML = '<span class="dot"></span> تعطیل رسمی — برای مشاهده نام رویداد نگه دارید';
+    grid.parentElement.appendChild(legend);
+}
+
+function selectJalaliDay(jd) {
+    pickerSelected[pickerTarget] = { jy: pickerYear, jm: pickerMonth, jd: jd };
+    const jalaliStr = `${pickerYear}/${String(pickerMonth).padStart(2,'0')}/${String(jd).padStart(2,'0')}`;
+    const displayStr = `${jalaliStr} — ${JALALI_MONTHS[pickerMonth - 1]}`;
+    const displayMap = { cancel: 'cancel_date_display', start: 'start_date_display', end: 'end_date_display' };
+    const hiddenMap  = { cancel: 'cancel_date_j_input', start: 'start_date_j_input', end: 'end_date_j_input' };
+    const wrapMap    = { cancel: 'picker-cancel', start: 'picker-start', end: 'picker-end' };
+    document.getElementById(displayMap[pickerTarget]).value = displayStr;
+    document.getElementById(hiddenMap[pickerTarget]).value  = jalaliStr;
+    document.getElementById(wrapMap[pickerTarget]).querySelector('.jalali-clear-btn').classList.remove('hidden');
+    renderJalaliCalendar();
+    setTimeout(() => document.getElementById('jalali-picker-popup').classList.remove('open'), 200);
+}
+
+function clearJalaliDate(target) {
+    pickerSelected[target] = null;
+    const displayMap = { cancel: 'cancel_date_display', start: 'start_date_display', end: 'end_date_display' };
+    const hiddenMap  = { cancel: 'cancel_date_j_input', start: 'start_date_j_input', end: 'end_date_j_input' };
+    const wrapMap    = { cancel: 'picker-cancel', start: 'picker-start', end: 'picker-end' };
+    document.getElementById(displayMap[target]).value = '';
+    document.getElementById(hiddenMap[target]).value  = '';
+    document.getElementById(wrapMap[target]).querySelector('.jalali-clear-btn').classList.add('hidden');
+}
+
+function toPersianNum(n) { return String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]); }
+
+function validateCancelForm() {
+    const prof = document.getElementById('cancel-professor').value.trim();
+    if (!prof) { showToast('نام استاد الزامی است', 'error'); return false; }
+    const hasDate = document.getElementById('cancel_date_j_input').value || document.getElementById('start_date_j_input').value;
+    if (!hasDate) { showToast('حداقل یک تاریخ (تاریخ دقیق یا بازه) وارد کنید', 'error'); return false; }
+    return true;
+}
+
+function showToast(message, type) {
+    const existing = document.getElementById('admin-toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'admin-toast';
+    const bgColor = type === 'success'
+        ? 'linear-gradient(135deg, var(--success), #1b5e20)'
+        : 'linear-gradient(135deg, var(--error), #b71c1c)';
+    toast.style.cssText = `position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:${bgColor};color:white;padding:.8rem 1.75rem;border-radius:24px;font-size:.9rem;font-weight:600;z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,.4);display:flex;align-items:center;gap:.5rem;animation:fadeInTab .25s ease;font-family:inherit;`;
+    toast.innerHTML = `<span class="material-icons-round" style="font-size:1.1rem;">${type === 'success' ? 'check_circle' : 'error'}</span>${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.transition = 'opacity .3s'; toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3500);
+}
+
+/* =====================================================
+   کاتالوگ دروس (Part B1/B2/B7) — پنل ادمین
+   ===================================================== */
+let catalogState = { page: 1, perPage: 10, total: 0 };
+let catalogTimer = null;
+let importErrorsCache = [];
+let lastCatalogData = null;
+const expandedCourseIds = new Set();
+const expandedSectionIds = new Set();
+/* رجیستری موجودیت‌ها — تا onclickها فقط عدد بگیرند (ایمن در برابر نقل‌قول) */
+const courseById = new Map();
+const sectionById = new Map();
+const meetingById = new Map();
+
+async function adminJson(url, opts) {
+    try {
+        const res = await csrfFetch(url, opts);
+        let data = {};
+        try { data = await res.json(); } catch (e) { data = {}; }
+        return { status: res.status, data };
+    } catch (e) {
+        return { status: 0, data: { error: 'خطا در ارتباط با سرور' } };
+    }
+}
+function postJson(url, body) {
+    return adminJson(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+    });
+}
+function putJson(url, body) {
+    return adminJson(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+    });
+}
+function faOnly(s) {
+    /* ارقام فارسی/عربی → ASCII برای فیلدهای عددی */
+    return String(s == null ? '' : s)
+        .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+        .replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+}
+function faTime(hhmm) {
+    const p = String(hhmm || '').split(':');
+    if (p.length !== 2) return String(hhmm || '');
+    const toFa = s => String(s).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    return toFa(String(parseInt(p[0], 10))) + (p[1] === '00' ? '' : toFa(':' + p[1]));
+}
+
+function debouncedCatalogList() {
+    if (catalogTimer) clearTimeout(catalogTimer);
+    catalogTimer = setTimeout(() => loadCatalogList(1), 250);
+}
+
+async function loadCatalogList(page) {
+    catalogState.page = page || 1;
+    const q = document.getElementById('catalog-q').value.trim();
+    const major = document.getElementById('catalog-major').value;
+    const term = document.getElementById('catalog-term-filter').value;
+    const inactive = document.getElementById('catalog-inactive').checked;
+    const params = new URLSearchParams({
+        page: String(catalogState.page), per_page: String(catalogState.perPage),
+        q: q, term: term, major: major,
+        include_inactive: inactive ? '1' : '0'
+    });
+    const { status, data } = await adminJson('/api/admin/catalog/list?' + params.toString());
+    if (status !== 200) {
+        showToast(data.error || 'خطا در خواندن کاتالوگ دروس', 'error');
+        return;
+    }
+    lastCatalogData = data;
+    renderCatalogList(data);
+}
+
+function fillSelectPreserve(sel, values, labelAll) {
+    const keep = sel.value;
+    sel.innerHTML = `<option value="">${labelAll}</option>` +
+        values.map(v => `<option value="${escapeHtml(String(v))}">${escapeHtml(String(v))}</option>`).join('');
+    sel.value = keep;
+}
+
+function renderCatalogList(data) {
+    courseById.clear(); sectionById.clear(); meetingById.clear();
+    /* تنظیمات ترم */
+    const st = data.settings || {};
+    const termInput = document.getElementById('catalog-active-term');
+    if (termInput && document.activeElement !== termInput) termInput.value = st.active_term || '';
+    const startInput = document.getElementById('catalog-term-start');
+    if (startInput && document.activeElement !== startInput) startInput.value = st.term_start || '';
+    const statusEl = document.getElementById('catalog-term-status');
+    if (statusEl) {
+        statusEl.textContent = st.active_term
+            ? `ترم فعال: ${st.active_term} — دانشجویان این ترم را می‌بینند`
+            : 'هنوز ترم فعالی تعیین نشده؛ دانشجویان چیزی نمی‌بینند!';
+    }
+    fillSelectPreserve(document.getElementById('catalog-major'), data.majors || [], 'همهٔ رشته‌ها');
+    fillSelectPreserve(document.getElementById('catalog-term-filter'), data.terms || [], 'همهٔ ترم‌ها');
+    document.getElementById('catalog-total').textContent =
+        `${data.total || 0} درس`;
+
+    /* فهرست دروس */
+    const host = document.getElementById('catalog-list');
+    if (!data.courses || !data.courses.length) {
+        host.innerHTML = `<div class="catalog-empty">
+            <span class="material-icons-round" style="font-size:2.4rem; display:block; margin-bottom:.4rem;">menu_book</span>
+            درسی در این فهرست نیست — درس جدید اضافه کنید یا فایل استاندارد را درون‌ریزی کنید.</div>`;
+    } else {
+        host.innerHTML = data.courses.map(renderCourseCard).join('');
+    }
+    renderPagination(data);
+}
+
+function renderCourseCard(entry) {
+    const c = entry.course;
+    courseById.set(c.id, c);
+    const expanded = expandedCourseIds.has(c.id);
+    const sections = entry.sections || [];
+    const anyActive = sections.some(s => s.is_active);
+    const offChip = anyActive ? '' : '<span class="catalog-chip off">بدون گروه فعال</span>';
+    let sectionsHtml = '';
+    if (expanded) {
+        sectionsHtml = sections.length
+            ? `<div class="catalog-sections">${sections.map(renderSectionRow).join('')}</div>`
+            : `<div class="catalog-sections"><span class="catalog-course-sub">گروهی ثبت نشده — «افزودن گروه» را بزنید.</span></div>`;
+    }
+    return `<div class="catalog-course-card${c.units == null ? ' inactive' : ''}">
+        <div class="catalog-course-head" onclick="toggleCourseSections(${c.id})"
+             role="button" tabindex="0"
+             aria-expanded="${expanded}">
+            <span class="material-icons-round" style="color:var(--brand-light);">${expanded ? 'expand_more' : 'chevron_left'}</span>
+            <span class="catalog-course-main">
+                <span class="catalog-course-name">${escapeHtml(c.name)}
+                    <span class="catalog-chip code">کد ${escapeHtml(c.code)}</span>
+                    <span class="catalog-chip units">${c.units != null ? escapeHtml(String(c.units)) : '—'} واحد</span>
+                    ${entry.enrolled_total ? `<span class="catalog-chip count">${entry.enrolled_total} ثبت‌نام</span>` : ''}
+                    ${offChip}
+                </span>
+                <span class="catalog-course-sub">
+                    ${c.major ? `<span>رشته: ${escapeHtml(c.major)}</span>` : ''}
+                    <span>گروه‌ها: ${sections.length}</span>
+                </span>
+            </span>
+            <span class="catalog-course-actions" onclick="event.stopPropagation()">
+                <button class="btn btn-outline" style="padding:.35rem .7rem; font-size:.78rem;"
+                        onclick="openSectionForm(${c.id}, null)">
+                    <span class="material-icons-round" style="font-size:1rem;">group_add</span> افزودن گروه
+                </button>
+                <button class="icon-btn-tiny" title="ویرایش درس"
+                        onclick="openCourseFormById(${c.id})">
+                    <span class="material-icons-round">edit</span>
+                </button>
+                <button class="icon-btn-tiny danger" title="حذف درس"
+                        onclick="deleteCourse(${c.id})">
+                    <span class="material-icons-round">delete_outline</span>
+                </button>
+            </span>
+        </div>
+        ${sectionsHtml}
+    </div>`;
+}
+
+function renderSectionRow(sec) {
+    sectionById.set(sec.id, sec);
+    (sec.meetings_all || sec.meetings || []).forEach(m => meetingById.set(m.id, m));
+    const expanded = expandedSectionIds.has(sec.id);
+    const meetings = sec.meetings_all || sec.meetings || [];
+    const meetingsHtml = expanded
+        ? `<ul class="catalog-meetings">${meetings.map(m => `
+            <li class="catalog-meeting-line${m.is_active ? '' : ' inactive'}">
+                <span class="material-icons-round">event</span>
+                <span>${escapeHtml(m.day_fa)} ${faTime(m.start_time)} تا ${faTime(m.end_time)} (${escapeHtml(m.week_fa)})</span>
+                ${m.location_override ? `<span class="catalog-chip code">${escapeHtml(m.location_override)}</span>` : ''}
+                ${m.out_of_grid ? '<span class="catalog-chip warn">خارج از ۸ تا ۲۰ — در نزدیک‌ترین اسلات</span>' : ''}
+                <span class="catalog-meeting-actions">
+                    ${m.is_active
+                        ? `<button class="icon-btn-tiny" title="ویرایش جلسه"
+                               onclick="openMeetingFormById(${sec.id}, ${m.id})">
+                               <span class="material-icons-round">edit</span></button>
+                           <button class="icon-btn-tiny danger" title="حذف جلسه"
+                               onclick="deleteMeeting(${m.id})">
+                               <span class="material-icons-round">delete_outline</span></button>`
+                        : `<button class="icon-btn-tiny restore" title="بازگردانی جلسه"
+                               onclick="restoreMeeting(${sec.id}, ${JSON.stringify(m)})">
+                               <span class="material-icons-round">restore</span></button>`}
+                </span>
+            </li>`).join('')}</ul>`
+        : '';
+    return `<div class="catalog-section-row${sec.is_active ? '' : ' inactive'}">
+        <div class="catalog-section-head">
+            <span class="catalog-section-title" role="button" tabindex="0"
+                  onclick="toggleSectionMeetings(${sec.id})"
+                  aria-expanded="${expanded}">
+                <span class="material-icons-round" style="font-size:1rem; color:var(--brand-light);">${expanded ? 'expand_more' : 'chevron_left'}</span>
+                گروه ${escapeHtml(String(sec.group_number))}
+                <span class="catalog-chip term">${escapeHtml(sec.term)}</span>
+                <span class="catalog-chip code">${sec.enrolled_count ? sec.enrolled_count + ' دانشجو' : 'بدون ثبت‌نام'}</span>
+                ${sec.is_active ? '' : '<span class="catalog-chip off">حذف‌شده (نرم)</span>'}
+            </span>
+            <span class="catalog-course-sub" style="flex:1;">
+                <span>${sec.teacher ? 'استاد: ' + escapeHtml(sec.teacher) : 'استاد تعیین نشده'}</span>
+                ${sec.location ? `<span>مکان: ${escapeHtml(sec.location)}</span>` : ''}
+                <span>${(sec.meetings || []).length} جلسهٔ فعال</span>
+            </span>
+            <span class="catalog-section-actions">
+                <button class="icon-btn-tiny" title="افزودن جلسه"
+                        onclick="addMeetingForSection(${sec.id})">
+                    <span class="material-icons-round">event_available</span>
+                </button>
+                <button class="icon-btn-tiny" title="ویرایش گروه"
+                        onclick="openSectionFormById(${sec.id})">
+                    <span class="material-icons-round">edit</span>
+                </button>
+                ${sec.is_active
+                    ? `<button class="icon-btn-tiny danger" title="حذف گروه"
+                           onclick="deleteSection(${sec.id})">
+                           <span class="material-icons-round">delete_outline</span></button>`
+                    : `<button class="icon-btn-tiny restore" title="بازگردانی گروه"
+                           onclick="restoreSection(${sec.id})">
+                           <span class="material-icons-round">restore</span></button>`}
+            </span>
+        </div>
+        ${meetingsHtml}
+    </div>`;
+}
+
+function renderPagination(data) {
+    const host = document.getElementById('catalog-pagination');
+    const page = data.page || 1;
+    const per = data.per_page || 10;
+    const total = data.total || 0;
+    const pages = Math.max(1, Math.ceil(total / per));
+    if (pages <= 1) { host.innerHTML = ''; return; }
+    let html = `<button class="catalog-page-btn" ${page <= 1 ? 'disabled' : ''}
+        onclick="loadCatalogList(${page - 1})">قبلی</button>`;
+    const start = Math.max(1, page - 2), end = Math.min(pages, page + 2);
+    for (let i = start; i <= end; i++) {
+        html += `<button class="catalog-page-btn${i === page ? ' active' : ''}"
+            onclick="loadCatalogList(${i})">${i}</button>`;
+    }
+    html += `<button class="catalog-page-btn" ${page >= pages ? 'disabled' : ''}
+        onclick="loadCatalogList(${page + 1})">بعدی</button>`;
+    host.innerHTML = html;
+}
+
+function toggleCourseSections(courseId) {
+    if (expandedCourseIds.has(courseId)) expandedCourseIds.delete(courseId);
+    else expandedCourseIds.add(courseId);
+    if (lastCatalogData) renderCatalogList(lastCatalogData);
+}
+function toggleSectionMeetings(sectionId) {
+    if (expandedSectionIds.has(sectionId)) expandedSectionIds.delete(sectionId);
+    else expandedSectionIds.add(sectionId);
+    if (lastCatalogData) renderCatalogList(lastCatalogData);
+}
+
+/* ── درس ── */
+function openCourseForm(course) {
+    document.getElementById('course-form-id').value = course ? course.id : '';
+    document.getElementById('course-form-title').textContent =
+        course ? 'ویرایش درس' : 'افزودن درس';
+    document.getElementById('course-form-code').value = course ? course.code : '';
+    document.getElementById('course-form-name').value = course ? course.name : '';
+    document.getElementById('course-form-units').value =
+        (course && course.units != null) ? String(course.units) : '';
+    document.getElementById('course-form-major').value = course ? (course.major || '') : '';
+    openModal('course-form-modal');
+    setTimeout(() => document.getElementById('course-form-code').focus(), 150);
+}
+
+async function submitCourseForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('course-form-id').value;
+    const payload = {
+        code: document.getElementById('course-form-code').value.trim(),
+        name: document.getElementById('course-form-name').value.trim(),
+        units: faOnly(document.getElementById('course-form-units').value.trim()),
+        major: document.getElementById('course-form-major').value.trim()
+    };
+    const { status, data } = id
+        ? await putJson('/api/admin/catalog/courses/' + id, payload)
+        : await postJson('/api/admin/catalog/courses', payload);
+    if (status === 200 || status === 201) {
+        closeModal('course-form-modal');
+        showToast(id ? 'درس ویرایش شد' : 'درس افزوده شد', 'success');
+        loadCatalogList(catalogState.page);
+    } else {
+        showToast(data.error || 'خطا در ذخیرهٔ درس', 'error');
+    }
+}
+
+async function deleteCourse(id) {
+    let { status, data } = await postJson('/api/admin/catalog/courses/' + id + '/delete', {});
+    if (status === 409 && data.confirm_required) {
+        if (!confirm(`${data.error}\nتعداد دانشجویان درگیر: ${data.affected}\nادامه می‌دهید؟`)) return;
+        ({ status, data } = await postJson('/api/admin/catalog/courses/' + id + '/delete', { soft: true }));
+    }
+    if (status === 200) {
+        showToast(data.soft
+            ? `درس حذف نرم شد — ${data.affected} دانشجو اطلاعیه گرفت`
+            : 'درس حذف شد', 'success');
+        loadCatalogList(catalogState.page);
+    } else {
+        showToast(data.error || 'خطا در حذف درس', 'error');
+    }
+}
+
+/* ── گروه ── */
+function openCourseFormById(courseId) {
+    const c = courseById.get(courseId);
+    openCourseForm(c || null);
+}
+function sectionLabelOf(sec) {
+    if (!sec) return '—';
+    return `${sec.course ? sec.course.code : ''} — گروه ${sec.group_number}`;
+}
+function openSectionFormById(sectionId) {
+    const s = sectionById.get(sectionId);
+    if (s) openSectionForm(s.course_id, s);
+}
+function addMeetingForSection(sectionId) {
+    openMeetingForm(sectionId, null, sectionLabelOf(sectionById.get(sectionId)));
+}
+function openMeetingFormById(sectionId, meetingId) {
+    openMeetingForm(sectionId, meetingById.get(meetingId) || null,
+                    sectionLabelOf(sectionById.get(sectionId)));
+}
+async function openSectionForm(courseId, section) {
+    let courseName = '';
+    if (section && section.course) {
+        courseName = `${section.course.code} — ${section.course.name}`;
+    } else if (lastCatalogData) {
+        const found = (lastCatalogData.courses || []).find(x => x.course.id === courseId);
+        if (found) courseName = `${found.course.code} — ${found.course.name}`;
+    }
+    document.getElementById('section-form-course').textContent = courseName || '—';
+    document.getElementById('section-form-course-id').value = courseId;
+    document.getElementById('section-form-id').value = section ? section.id : '';
+    document.getElementById('section-form-title').textContent =
+        section ? 'ویرایش گروه' : 'افزودن گروه';
+    document.getElementById('section-form-term').value =
+        section ? section.term
+                : ((lastCatalogData && lastCatalogData.settings &&
+                    lastCatalogData.settings.active_term) || '');
+    document.getElementById('section-form-group').value =
+        section ? String(section.group_number) : '';
+    document.getElementById('section-form-teacher').value = section ? (section.teacher || '') : '';
+    document.getElementById('section-form-location').value = section ? (section.location || '') : '';
+    const wrap = document.getElementById('section-form-active-wrap');
+    wrap.style.display = section ? 'flex' : 'none';
+    document.getElementById('section-form-active').checked = section ? !!section.is_active : true;
+    openModal('section-form-modal');
+    setTimeout(() => document.getElementById('section-form-group').focus(), 150);
+}
+
+async function submitSectionForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('section-form-id').value;
+    const payload = {
+        course_id: Number(document.getElementById('section-form-course-id').value),
+        term: document.getElementById('section-form-term').value.trim(),
+        group_number: faOnly(document.getElementById('section-form-group').value.trim()),
+        teacher: document.getElementById('section-form-teacher').value.trim(),
+        location: document.getElementById('section-form-location').value.trim()
+    };
+    if (id) payload.is_active = document.getElementById('section-form-active').checked;
+    const { status, data } = id
+        ? await putJson('/api/admin/catalog/sections/' + id, payload)
+        : await postJson('/api/admin/catalog/sections', payload);
+    if (status === 200 || status === 201) {
+        closeModal('section-form-modal');
+        showToast(id ? 'گروه ویرایش شد' : 'گروه افزوده شد — حالا جلسهٔ هفتگی ثبت کنید', 'success');
+        if (!id && data.section && data.section.id) expandedSectionIds.add(data.section.id);
+        if (id) expandedSectionIds.add(Number(id));
+        expandedCourseIds.add(payload.course_id);
+        loadCatalogList(catalogState.page);
+    } else {
+        showToast(data.error || 'خطا در ذخیرهٔ گروه', 'error');
+    }
+}
+
+async function deleteSection(id) {
+    let { status, data } = await postJson('/api/admin/catalog/sections/' + id + '/delete', {});
+    if (status === 409 && data.confirm_required) {
+        if (!confirm(`${data.error}\nتعداد دانشجویان درگیر: ${data.affected}\nادامه می‌دهید؟`)) return;
+        ({ status, data } = await postJson('/api/admin/catalog/sections/' + id + '/delete', { soft: true }));
+    }
+    if (status === 200) {
+        showToast(data.soft
+            ? `گروه حذف نرم شد — ${data.affected} دانشجو اطلاعیه گرفت`
+            : 'گروه حذف شد', 'success');
+        loadCatalogList(catalogState.page);
+    } else {
+        showToast(data.error || 'خطا در حذف گروه', 'error');
+    }
+}
+
+async function restoreSection(id) {
+    const { status, data } = await putJson('/api/admin/catalog/sections/' + id,
+                                           { is_active: true });
+    if (status === 200) {
+        showToast('گروه بازگردانی شد', 'success');
+        loadCatalogList(catalogState.page);
+    } else {
+        showToast(data.error || 'خطا در بازگردانی گروه', 'error');
+    }
+}
+
+/* ── جلسه ── */
+function openMeetingForm(sectionId, meeting, sectionLabel) {
+    document.getElementById('meeting-form-section').textContent = sectionLabel || '—';
+    document.getElementById('meeting-form-id').value = meeting ? meeting.id : '';
+    document.getElementById('meeting-form-section-id').value = sectionId;
+    document.getElementById('meeting-form-title').textContent =
+        meeting ? 'ویرایش جلسه' : 'افزودن جلسه';
+    document.getElementById('meeting-form-day').value = meeting ? meeting.day : 'saturday';
+    document.getElementById('meeting-form-week').value = meeting ? meeting.week_type : 'all';
+    document.getElementById('meeting-form-start').value = meeting ? meeting.start_time : '08:00';
+    document.getElementById('meeting-form-end').value = meeting ? meeting.end_time : '10:00';
+    document.getElementById('meeting-form-location').value =
+        meeting ? (meeting.location_override || '') : '';
+    clearMeetingWarnings();
+    openModal('meeting-form-modal');
+}
+
+function clearMeetingWarnings() {
+    const w = document.getElementById('meeting-warnings');
+    w.classList.remove('open');
+    w.innerHTML = '';
+    delete submitMeetingForm._ack;
+}
+
+async function submitMeetingForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('meeting-form-id').value;
+    const sectionId = document.getElementById('meeting-form-section-id').value;
+    const payload = {
+        section_id: Number(sectionId),
+        day: document.getElementById('meeting-form-day').value,
+        week_type: document.getElementById('meeting-form-week').value,
+        start_time: document.getElementById('meeting-form-start').value,
+        end_time: document.getElementById('meeting-form-end').value,
+        location_override: document.getElementById('meeting-form-location').value.trim()
+    };
+    if (submitMeetingForm._ack) payload.acknowledge_warnings = true;
+    const { status, data } = id
+        ? await putJson('/api/admin/catalog/meetings/' + id, payload)
+        : await postJson('/api/admin/catalog/meetings', payload);
+    if (status === 200 || status === 201) {
+        closeModal('meeting-form-modal');
+        showToast(id ? 'جلسه ویرایش شد' : 'جلسه افزوده شد', 'success');
+        expandedSectionIds.add(Number(sectionId));
+        if (lastCatalogData) {
+            const sec = collectSections(lastCatalogData).find(s => s.id === Number(sectionId));
+            if (sec) expandedCourseIds.add(sec.course_id);
+        }
+        loadCatalogList(catalogState.page);
+        return;
+    }
+    if (status === 409 && data.warning_required && Array.isArray(data.warnings)) {
+        /* هشدار غیربلوکه: ذخیره متوقف نمی‌شود — ادمین می‌بیند و تأیید می‌کند */
+        const w = document.getElementById('meeting-warnings');
+        w.innerHTML = `<b><span class="material-icons-round" style="font-size:1rem; vertical-align:middle;">warning_amber</span>
+            هشدار تداخل (ذخیره متوقف نشد — بررسی و تأیید کنید):</b>
+            <ul>${data.warnings.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
+            <button type="button" class="btn btn-custom" style="margin-top:.5rem;"
+                    onclick="submitMeetingForm._ack = true; document.getElementById('meeting-form').requestSubmit();">
+                <span class="material-icons-round">check</span> بررسی کردم — ذخیره با وجود هشدار
+            </button>`;
+        w.classList.add('open');
+        return;
+    }
+    showToast(data.error || 'خطا در ذخیرهٔ جلسه', 'error');
+}
+
+function collectSections(data) {
+    const out = [];
+    (data.courses || []).forEach(c => (c.sections || []).forEach(s => out.push(s)));
+    return out;
+}
+
+async function deleteMeeting(id) {
+    let { status, data } = await postJson('/api/admin/catalog/meetings/' + id + '/delete', {});
+    if (status === 409 && data.confirm_required) {
+        if (!confirm(`${data.error}\nتعداد دانشجویان درگیر: ${data.affected}\nادامه می‌دهید؟`)) return;
+        ({ status, data } = await postJson('/api/admin/catalog/meetings/' + id + '/delete', { soft: true }));
+    }
+    if (status === 200) {
+        showToast(data.soft ? 'جلسه حذف نرم شد — دانشجویان اطلاعیه گرفتند' : 'جلسه حذف شد', 'success');
+        loadCatalogList(catalogState.page);
+    } else {
+        showToast(data.error || 'خطا در حذف جلسه', 'error');
+    }
+}
+
+async function restoreMeeting(sectionId, meeting) {
+    const payload = {
+        section_id: Number(sectionId),
+        day: meeting.day, week_type: meeting.week_type,
+        start_time: meeting.start_time, end_time: meeting.end_time,
+        location_override: meeting.location_override || '',
+        is_active: true, acknowledge_warnings: true
+    };
+    const { status, data } = await putJson('/api/admin/catalog/meetings/' + meeting.id, payload);
+    if (status === 200) {
+        showToast('جلسه بازگردانی شد', 'success');
+        loadCatalogList(catalogState.page);
+    } else {
+        showToast(data.error || 'خطا در بازگردانی جلسه', 'error');
+    }
+}
+
+/* ── ترم فعال + شروع ترم ── */
+async function saveActiveTerm() {
+    const term = document.getElementById('catalog-active-term').value.trim();
+    const { status, data } = await postJson('/api/admin/catalog/active-term', { term });
+    if (status === 200) {
+        showToast(term ? `ترم فعال «${term}» ثبت شد` : 'ترم فعال پاک شد', 'success');
+        loadCatalogList(catalogState.page);
+    } else {
+        showToast(data.error || 'خطا در ذخیرهٔ ترم فعال', 'error');
+    }
+}
+async function saveTermStart() {
+    const jalali = document.getElementById('catalog-term-start').value.trim();
+    const { status, data } = await postJson('/api/admin/catalog/term-start', { jalali });
+    if (status === 200) {
+        showToast(jalali ? 'تاریخ شروع ترم ثبت شد' : 'تاریخ شروع ترم پاک شد', 'success');
+        loadCatalogList(catalogState.page);
+    } else {
+        showToast(data.error || 'خطا در ذخیرهٔ تاریخ شروع ترم', 'error');
+    }
+}
+
+/* ── درون‌ریزی / برون‌بری ── */
+function onImportFileSelected() {
+    const f = document.getElementById('catalog-import-file').files[0];
+    if (f) document.getElementById('catalog-import-text').placeholder =
+        `فایل «${f.name}» انتخاب شد — روی «پیش‌نمایش» بزنید (کدگذاری سمت سرور تشخیص داده می‌شود)`;
+}
+
+async function runImport(mode) {
+    const file = document.getElementById('catalog-import-file').files[0];
+    const text = document.getElementById('catalog-import-text').value;
+    const importMode = document.getElementById('catalog-import-mode').value;
+    const skipInvalid = document.getElementById('catalog-skip-invalid').checked;
+    if (!file && !text.trim()) {
+        showToast('فایل یا متنی ارسال نشد', 'error');
+        return;
+    }
+    const btns = document.querySelectorAll('.catalog-import-actions .btn');
+    btns.forEach(b => b.disabled = true);
+    let res;
+    try {
+        if (file) {
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('mode', mode);
+            fd.append('import_mode', importMode);
+            fd.append('skip_invalid', skipInvalid ? '1' : '');
+            res = await csrfFetch('/api/admin/catalog/import', { method: 'POST', body: fd });
+        } else {
+            res = await csrfFetch('/api/admin/catalog/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, mode: mode, import_mode: importMode,
+                                       skip_invalid: skipInvalid })
+            });
+        }
+        const data = await res.json();
+        renderImportResult(data, mode, res.status);
+    } catch (e) {
+        showToast('خطا در ارتباط با سرور', 'error');
+    }
+    btns.forEach(b => b.disabled = false);
+}
+
+function renderImportResult(data, mode, httpStatus) {
+    const host = document.getElementById('catalog-import-result');
+    host.classList.add('open');
+    importErrorsCache = Array.isArray(data.errors) ? data.errors : [];
+    const dlBtn = document.getElementById('dl-errors-btn');
+    dlBtn.style.display = importErrorsCache.length ? 'inline-flex' : 'none';
+
+    const enc = data.encoding ? `<span class="import-chip">کدگذاری: ${escapeHtml(data.encoding)}</span>` : '';
+    const del = data.delimiter ? `<span class="import-chip">جداکننده: ${escapeHtml(data.delimiter === '\t' ? 'Tab' : data.delimiter)}</span>` : '';
+    let summary = `<div class="import-summary">${enc}${del}`;
+    const c = data.counts || data.summary || {};
+    if (data.committed && data.summary) {
+        summary += `<span class="import-chip ok">ثبت شد</span>
+            <span class="import-chip ok">${data.summary.courses_created} درس جدید</span>
+            <span class="import-chip">${data.summary.courses_updated} درس به‌روز</span>
+            <span class="import-chip ok">${data.summary.sections_created} گروه جدید</span>
+            <span class="import-chip">${data.summary.sections_updated} گروه به‌روز</span>
+            <span class="import-chip">${data.summary.meetings_created} جلسه</span>
+            ${data.summary.sections_skipped ? `<span class="import-chip warn">${data.summary.sections_skipped} گروه رد شد</span>` : ''}`;
+    } else {
+        if (data.rows_valid != null) summary += `<span class="import-chip">${data.rows_valid} ردیف معتبر</span>`;
+        if (c.sections_create != null) summary += `<span class="import-chip">${c.sections_create} گروه جدید</span>`;
+        if (c.sections_update != null) summary += `<span class="import-chip">${c.sections_update} گروه به‌روز</span>`;
+        if (c.sections_skip != null) summary += `<span class="import-chip warn">${c.sections_skip} رد (موجود)</span>`;
+        if (importErrorsCache.length) summary += `<span class="import-chip bad">${importErrorsCache.length} خطا</span>`;
+    }
+    summary += '</div>';
+    let html = summary;
+    if (importErrorsCache.length) {
+        html += `<ul class="import-errors">${importErrorsCache.slice(0, 200).map(e =>
+            `<li>ردیف ${e.line}: ${escapeHtml(e.reason)}</li>`).join('')}</ul>`;
+    }
+    if (!data.committed && mode === 'commit' && !data.error) {
+        html += `<p style="color:var(--warning); font-weight:700; margin-top:.4rem;">
+            ${escapeHtml(data.message || 'ثبت نشد — ابتدا پیش‌نمایش و رفع خطا، یا «ردِ خطوط نامعتبر» را بزنید.')}</p>`;
+    }
+    if (Array.isArray(data.skipped) && data.skipped.length) {
+        html += `<div class="import-plan">${data.skipped.slice(0, 50).map(s =>
+            `<div class="import-plan-row"><span class="import-chip warn">رد</span>
+             <span>${escapeHtml(s.code)} گروه ${s.group} — ${escapeHtml(s.reason)}</span></div>`).join('')}</div>`;
+    }
+    if (mode === 'preview' && Array.isArray(data.plan)) {
+        html += `<div class="import-plan">${data.plan.slice(0, 200).map(p =>
+            `<div class="import-plan-row">
+                <span class="import-chip ${p.action === 'create' ? 'ok' : p.action === 'skip' ? 'warn' : ''}">${p.action === 'create' ? 'جدید' : p.action === 'skip' ? 'رد' : 'به‌روز'}</span>
+                <span>${escapeHtml(p.code)} — ${escapeHtml(p.name)} — گروه ${p.group} — ${p.meetings} جلسه</span>
+                <span style="color:var(--text-secondary);">${escapeHtml(p.reason)}</span>
+            </div>`).join('')}</div>`;
+    }
+    host.innerHTML = html;
+    if (data.committed) {
+        showToast('درون‌ریزی با موفقیت ثبت شد', 'success');
+        loadCatalogList(1);
+    } else if (data.error) {
+        showToast(data.error, 'error');
+    }
+}
+
+function downloadImportErrors() {
+    const body = 'گزارش خطاهای درون‌ریزی کاتالوگ — یونی‌نت\n' +
+        '='.repeat(50) + '\n' +
+        importErrorsCache.map(e => `ردیف ${e.line}: ${e.reason}`).join('\n') + '\n';
+    const blob = new Blob(['\ufeff' + body], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'uninet_catalog_import_errors.txt';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+async function downloadFromUrl(url, filename) {
+    try {
+        const res = await csrfFetch(url);
+        if (!res.ok) { showToast('خطا در دریافت فایل', 'error'); return; }
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    } catch (e) { showToast('خطا در دریافت فایل', 'error'); }
+}
+function downloadTemplate() {
+    downloadFromUrl('/api/admin/catalog/template', 'uninet_catalog_template.txt');
+}
+function exportCatalog() {
+    const term = document.getElementById('catalog-term-filter').value;
+    downloadFromUrl('/api/admin/catalog/export' + (term ? `?term=${encodeURIComponent(term)}` : ''),
+                    `uninet_catalog_${term || 'all'}.txt`);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.jalali-clear-btn').forEach(b => b.classList.add('hidden'));
+    const allRadio = document.querySelector('.time-slot-chip input[value=""]');
+    if (allRadio) allRadio.checked = true;
+    /* بارگذای اولیهٔ کاتالوگ (وقتی تب ادمین باز می‌شود) */
+    loadCatalogList(1);
+});
+</script>
+{% endblock %}

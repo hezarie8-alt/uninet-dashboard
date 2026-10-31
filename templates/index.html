@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block title %}یونی‌نت | پلتفرم یکپارچه دانشجویی{% endblock %}
+
+{% block content %}
+
+<style>
+/* ============ Page-specific styles — index.html ============ */
+
+/* ---------- Hero ---------- */
+.hero{
+    padding:5.5rem 0 4rem;
+    position:relative;
+    overflow:hidden;
+}
+.hero-content{
+    display:grid;
+    grid-template-columns:1.1fr 0.9fr;
+    align-items:center;
+    gap:3rem;
+}
+.hero-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:0.5rem;
+    padding:0.45rem 1rem;
+    border-radius:var(--radius-pill);
+    background:var(--glass-bg-strong);
+    border:1px solid var(--glass-border-strong);
+    font-size:0.82rem;
+    color:var(--brand-light);
+    margin-bottom:1.4rem;
+}
+.hero-badge .material-icons-round{ font-size:1rem; }
+
+.hero-title{
+    font-size:3.1rem;
+    font-weight:800;
+    line-height:1.25;
+    letter-spacing:-1px;
+    margin-bottom:1.2rem;
+    background:linear-gradient(95deg, #fff 35%, var(--brand-light) 70%, var(--accent) 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
+html.light-mode .hero-title,
+body.light-mode .hero-title{
+    background:linear-gradient(95deg, var(--text-primary) 35%, var(--brand) 70%, var(--accent) 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+}
+.hero-subtitle{
+    font-size:1.08rem;
+    color:var(--text-secondary);
+    max-width:540px;
+    margin-bottom:0.5rem;
+}
+
+.btn{
+    display:inline-flex;
+    align-items:center;
+    gap:0.5rem;
+    padding:0.85rem 1.6rem;
+    border-radius:var(--radius-pill);
+    font-weight:600;
+    font-size:0.95rem;
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:transform 0.25s var(--ease), box-shadow 0.25s var(--ease), background 0.25s;
+}
+.btn .material-icons-round{ font-size:1.2rem; }
+.btn-primary{
+    background:linear-gradient(135deg, var(--brand-light), var(--brand));
+    color:#03161A;
+    box-shadow:0 8px 24px rgba(38,198,218,0.35);
+}
+.btn-primary:hover{ transform:translateY(-3px); box-shadow:0 12px 32px rgba(38,198,218,0.5); }
+.btn-outline{
+    background:var(--glass-bg-strong);
+    border:1px solid var(--glass-border-strong);
+    color:var(--text-primary);
+}
+.btn-outline:hover{ background:var(--glass-bg-hover); transform:translateY(-3px); }
+
+.hero-image-wrap{
+    position:relative;
+    border-radius:var(--radius-lg);
+    overflow:hidden;
+    border:1px solid var(--glass-border-strong);
+    box-shadow:var(--shadow-glass), var(--shadow-glow);
+}
+.hero-image-wrap img{
+    width:100%; height:100%;
+    display:block;
+    object-fit:cover;
+}
+.hero-image-wrap::after{
+    content:'';
+    position:absolute; inset:0;
+    background:linear-gradient(165deg, rgba(0,131,143,0.25), transparent 60%);
+    pointer-events:none;
+}
+
+@media (max-width:880px){
+    .hero-content{ grid-template-columns:1fr; }
+    .hero-title{ font-size:2.2rem; }
+    .hero-image-wrap{ order:-1; }
+}
+
+/* ---------- Section headers ---------- */
+.section-head{ text-align:center; max-width:620px; margin:0 auto 3rem; }
+.section-title{
+    font-size:2.1rem;
+    font-weight:800;
+    margin-bottom:0.7rem;
+}
+.section-subtitle{ color:var(--text-secondary); font-size:1rem; }
+
+/* ---------- Features Bento Grid ---------- */
+.features-section{ padding:4rem 0; position:relative; }
+.bento-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    grid-auto-rows:1fr;
+    gap:1.25rem;
+}
+.feature-card{
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg);
+    padding:1.75rem;
+    backdrop-filter:blur(18px) saturate(140%);
+    -webkit-backdrop-filter:blur(18px) saturate(140%);
+    transition:transform 0.35s var(--ease), border-color 0.35s, box-shadow 0.35s, background 0.35s;
+    position:relative;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+}
+.feature-card::before{
+    content:'';
+    position:absolute;
+    width:160px; height:160px;
+    border-radius:50%;
+    background:radial-gradient(circle, var(--brand) 0%, transparent 75%);
+    top:-60px; right:-60px;
+    opacity:0;
+    transition:opacity 0.4s;
+}
+.feature-card:hover{
+    transform:translateY(-3px);
+    box-shadow:0 12px 32px rgba(0,0,0,0.3);
+}
+.feature-card:hover::before{ opacity:0.5; }
+
+.feature-icon-wrap{
+    width:54px; height:54px;
+    border-radius:var(--radius-md);
+    background:linear-gradient(135deg, var(--brand), var(--brand-dark));
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:1.2rem;
+    box-shadow:0 6px 18px rgba(0,131,143,0.4);
+}
+.feature-icon-wrap .material-icons-round{ font-size:1.7rem; color:#fff; }
+
+.feature-title{ font-size:1.1rem; font-weight:700; margin-bottom:0.5rem; position:relative; z-index:1; }
+.feature-description{ color:var(--text-secondary); font-size:0.88rem; position:relative; z-index:1; flex:1; }
+
+@media (max-width:880px){
+    .bento-grid{ grid-template-columns:1fr; }
+}
+
+/* ---------- Stats ---------- */
+.stats-section{
+    padding:3.5rem 0;
+    position:relative;
+}
+.stats-glass{
+    border-radius:var(--radius-lg);
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    padding:2.5rem 1.5rem;
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+    gap:1.5rem;
+    text-align:center;
+}
+.stat-num{
+    font-size:2.6rem; font-weight:800;
+    background:linear-gradient(90deg, var(--brand-light), var(--accent));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.stat-label{ color:var(--text-secondary); margin-top:0.35rem; font-size:0.9rem; }
+
+/* ---------- CTA ---------- */
+.cta-section{ padding:5rem 0; }
+.cta-glass{
+    border-radius:var(--radius-lg);
+    padding:3.5rem 2rem;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+    border:1px solid var(--glass-border-strong);
+    background:linear-gradient(135deg, rgba(0,131,143,0.25), rgba(124,77,255,0.18));
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+}
+.cta-glass h2{ font-size:2rem; font-weight:800; margin-bottom:0.8rem; }
+.cta-glass p{ color:var(--text-secondary); font-size:1.05rem; margin-bottom:2rem; }
+</style>
+
+<!-- Hero Section -->
+<section class="hero" style="position:relative;">
+    <canvas id="heroCanvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0.6;"></canvas>
+    <div class="container">
+        <div class="hero-content">
+            <div class="hero-text">
+                <span class="hero-badge">
+                    <span class="material-icons-round">auto_awesome</span>
+                    نسخه ۲۰۲۶ — بازطراحی‌شده
+                </span>
+                <h1 class="hero-title">پلتفرم یکپارچه دانشجویی</h1>
+                <p class="hero-subtitle">
+                    مدیریت برنامه کلاسی، ارتباط با دوستان و همکلاسی‌ها در یک پلتفرم ساده و کاربردی.
+                    با یونی‌نت، تجربه دانشجویی خود را ارتقا دهید.
+                </p>
+                <div class="hero-buttons" style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.8rem;">
+                    {% if current_user %}
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                            <span class="material-icons-round">dashboard</span>
+                            داشبورد برنامه
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('show_auth_page') }}" class="btn btn-primary">
+                            <span class="material-icons-round">login</span>
+                            شروع کنید
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="hero-image-wrap hero-visual" role="img" aria-label="نمای دانشجویی یونی‌نت">
+                    <div class="hero-visual-grid"></div>
+                    <div class="hero-visual-glow"></div>
+                    <div class="hero-visual-content">
+                        <div class="hero-visual-icon"><span class="material-icons-round">school</span></div>
+                        <strong>زندگی دانشجویی، یکپارچه</strong>
+                        <span>برنامه، پیام و منابع در یک سامانه</span>
+                        <div class="hero-visual-stats">
+                            <b>۵</b><small>روز تحصیلی</small>
+                            <b>۶</b><small>بازه کلاسی</small>
+                            <b>۱۲+</b><small>تم رنگی</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container">
+        <div class="section-head">
+            <h2 class="section-title">امکانات یونی‌نت</h2>
+            <p class="section-subtitle">ابزارهایی که برای مدیریت بهتر زندگی دانشجویی نیاز دارید</p>
+        </div>
+
+        <div class="bento-grid">
+            <div class="glass-card feature-card">
+                <div class="feature-icon-wrap"><span class="material-icons-round">calendar_month</span></div>
+                <h3 class="feature-title">برنامه کلاسی هوشمند</h3>
+                <p class="feature-description">
+                    مدیریت برنامه هفتگی با پشتیبانی از کلاس‌های زوج و فرد به‌صورت هم‌زمان،
+                    نمایش تقویم شمسی و تعطیلات رسمی.
+                </p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon-wrap"><span class="material-icons-round">forum</span></div>
+                <h3 class="feature-title">پیام‌رسان پیشرفته</h3>
+                <p class="feature-description">
+                     گفتگوی خصوصی، گروه دانشجویی و کانال اطلاعیه‌ها با امکان ارسال فایل، واکنش و پاسخ مستقیم.
+                </p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon-wrap"><span class="material-icons-round">event_note</span></div>
+                <h3 class="feature-title">مدیریت ددلاین</h3>
+                <p class="feature-description">
+                     ثبت و اشتراک‌گذاری ددلاین‌های درسی با تقویم شمسی و افزودن ددلاین دوستان به حساب خود.
+                </p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon-wrap"><span class="material-icons-round">library_books</span></div>
+                <h3 class="feature-title">منابع درسی</h3>
+                <p class="feature-description">
+                     بارگذاری و دریافت جزوه، اسلاید و نمونه‌پرسش با جست‌وجو بر اساس درس و نوع منبع.
+                </p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon-wrap"><span class="material-icons-round">meeting_room</span></div>
+                <h3 class="feature-title">رزرو کلاس</h3>
+                <p class="feature-description">
+                     درخواست رزرو کلاس‌های خالی به‌صورت هفتگی و پیگیری وضعیت توسط مدیریت.
+                </p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon-wrap"><span class="material-icons-round">palette</span></div>
+                <h3 class="feature-title">تم‌های شخصی‌سازی</h3>
+                <p class="feature-description">
+                     حالت تیره و روشن، و چندین تم رنگی برای پیام‌رسان؛ تجربه‌ای شخصی برای هر کاربر.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="container">
+        <div class="glass-card stats-glass">
+            <div>
+                <div class="stat-num">۱۲+</div>
+                <div class="stat-label">تم رنگی</div>
+            </div>
+            <div>
+                <div class="stat-num">۵</div>
+                <div class="stat-label">روز هفته</div>
+            </div>
+            <div>
+                <div class="stat-num">۶</div>
+                <div class="stat-label">بازه زمانی کلاس</div>
+            </div>
+            <div>
+                <div class="stat-num">∞</div>
+                <div class="stat-label">ددلاین قابل ثبت</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="glass-card cta-glass">
+            <h2>همین الان شروع کنید</h2>
+            <p>با وارد کردن شماره دانشجویی، به جمع یونی‌نت بپیوندید.</p>
+            <a href="{{ url_for('show_auth_page') }}" class="btn btn-primary" style="padding:1rem 2.6rem; font-size:1.05rem;">
+                <span class="material-icons-round">person_add</span>
+                ثبت‌نام رایگان
+            </a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Hero canvas animated background
+(function() {
+    const canvas = document.getElementById('heroCanvas');
+    if (!canvas) return;
+     const ctx = canvas.getContext('2d');
+     const styles = getComputedStyle(document.documentElement);
+     const brandColor = styles.getPropertyValue('--brand').trim() || '#26c6da';
+     const withAlpha = (color, alpha) => {
+         const hex = String(color).replace('#', '');
+         if (!/^[0-9a-f]{6}$/i.test(hex)) return color;
+         const red = parseInt(hex.slice(0, 2), 16);
+         const green = parseInt(hex.slice(2, 4), 16);
+         const blue = parseInt(hex.slice(4, 6), 16);
+         return `rgba(${red},${green},${blue},${alpha})`;
+     };
+     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let w, h, particles = [], animId;
+
+    function resize() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        w = rect.width;
+        h = rect.height;
+    }
+
+    function createParticles() {
+        particles = [];
+        for (let i = 0; i < 50; i++) {
+            particles.push({
+                x: Math.random() * w,
+                y: Math.random() * h,
+                r: Math.random() * 2 + 0.5,
+                vx: (Math.random() - 0.5) * 0.4,
+                vy: (Math.random() - 0.5) * 0.4,
+                alpha: Math.random() * 0.4 + 0.1
+            });
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, w, h);
+        for (const p of particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x < 0 || p.x > w) p.vx *= -1;
+            if (p.y < 0 || p.y > h) p.vy *= -1;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+             ctx.fillStyle = withAlpha(brandColor, p.alpha);
+            ctx.fill();
+        }
+         ctx.strokeStyle = withAlpha(brandColor, 0.08);
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                if (Math.sqrt(dx*dx + dy*dy) < 100) {
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.stroke();
+                }
+            }
+        }
+        if (!reducedMotion) animId = requestAnimationFrame(draw);
+    }
+
+    resize();
+    createParticles();
+    draw();
+
+    window.addEventListener('resize', () => { resize(); createParticles(); });
+
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            requestAnimationFrame(() => {
+                canvas.style.transform = `translateY(${window.scrollY * 0.3}px)`;
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }, { passive: true });
+})();
+</script>
+{% endblock %}

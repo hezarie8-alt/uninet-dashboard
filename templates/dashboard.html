@@ -1,0 +1,2706 @@
+{% extends "base.html" %}
+
+{% block title %}داشبورد | یونی‌نت{% endblock %}
+
+{% block body_class %}fit-viewport{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+
+    <div class="dashboard-top-row">
+        <div class="glass-surface datetime-widget">
+            <div class="datetime-inner">
+                <div class="datetime-top">
+                    <div class="datetime-icon-area">
+                        <span class="material-icons-round datetime-main-icon">today</span>
+                    </div>
+                    <div class="datetime-details">
+                        <div class="datetime-weekday" id="dt-weekday">{{ weekday_name }}</div>
+                        <div class="datetime-date" id="dt-date">{% if today_persian %}{{ today_persian }}{% endif %}</div>
+                    </div>
+                </div>
+                <div class="datetime-divider"></div>
+                <div class="datetime-clock-row">
+                    <span class="material-icons-round" style="font-size:1.1rem; opacity:.7;">schedule</span>
+                    <span class="datetime-clock" id="live-clock">--:--:--</span>
+                </div>
+            </div>
+        </div>
+        <div class="glass-card notifications-widget">
+            <div class="widget-header">
+                <span class="material-icons-round">notifications_active</span>
+                <span>اطلاعیه‌ها</span>
+                {% if notifications %}
+                    <span class="notif-count-badge">{{ notifications|length }}</span>
+                {% endif %}
+            </div>
+            {% if notifications %}
+                <ul class="notif-list">
+                    {% for notif in notifications %}
+                        <li class="notif-item {% if not notif.is_read %}unread{% endif %}"
+                            onclick="markRead({{ notif.id }}, this)">
+                            <span class="material-icons-round notif-icon">info_outline</span>
+                            <div class="notif-body">
+                                <span class="notif-text">{{ notif.message }}</span>
+                                {# created_at ممکن است در رکوردهای قدیمی NULL باشد؛
+                                   فراخوانی strftime روی None باعث خطای ۵۰۰ کل صفحه می‌شد #}
+                                <small class="notif-time">{% if notif.created_at %}{{ notif.created_at.strftime('%H:%M') }}{% endif %}</small>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="empty-notif">
+                    <span class="material-icons-round">check_circle_outline</span>
+                    <span>اطلاعیه جدیدی ندارید</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if cancelled_classes %}
+    <div class="cancelled-alert-banner">
+        <div class="alert-icon"><span class="material-icons-round">warning_amber</span></div>
+        <div class="alert-content">
+            <strong>کلاس‌های لغو شده امروز:</strong>
+            {% for c in cancelled_classes %}
+                <span class="alert-item">
+                    {% if c.course_name and c.professor_name %}
+                        {{ c.course_name }} (استاد {{ c.professor_name }})
+                    {% elif c.professor_name %}
+                        تمامی کلاس‌های استاد {{ c.professor_name }}
+                    {% else %}
+                        {{ c.course_name or 'بدون نام' }}
+                    {% endif %}
+                    {% if c.time_slot %} — ساعت {{ c.time_slot }}{% endif %}
+                    {% if c.description %} — {{ c.description }}{% endif %}
+                </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="tabs-bar">
+        <button class="dash-tab active" id="tab-btn-schedule" onclick="openTab('personal-schedule', this)">
+            <span class="material-icons-round">event_note</span>
+            <span>برنامه هفتگی من</span>
+        </button>
+        <button class="dash-tab" id="tab-btn-reserve" onclick="openTab('reserve-room', this)">
+            <span class="material-icons-round">meeting_room</span>
+            <span>رزرو کلاس</span>
+        </button>
+        <button class="dash-tab" id="tab-btn-cancelled" onclick="openTab('cancelled-classes', this)">
+            <span class="material-icons-round">event_busy</span>
+            <span>کلاس‌های لغو شده</span>
+            {% if unviewed_cancelled_count and unviewed_cancelled_count > 0 %}
+                <span class="tab-badge" id="cancelled-badge">{{ unviewed_cancelled_count }}</span>
+            {% else %}
+                <span class="tab-badge" id="cancelled-badge" style="display:none;">0</span>
+            {% endif %}
+        </button>
+    </div>
+
+    <div id="personal-schedule" class="tab-content active">
+        <div class="glass-card section-card">
+            <div class="section-card-header">
+                <div class="section-card-title">
+                    <span class="material-icons-round">event_note</span>
+                    <h2>برنامه کلاسی شخصی</h2>
+                </div>
+                <div class="section-card-actions">
+                    <button class="btn btn-outline" onclick="openPasteModal()" title="وارد کردن برنامه از جدول">
+                        <span class="material-icons-round">table_view</span>
+                        <span>وارد کردن از جدول</span>
+                    </button>
+                    <button class="btn btn-outline" onclick="copyScheduleAsText()" title="کپی برنامه هفتگی">
+                        <span class="material-icons-round">content_copy</span>
+                        <span>کپی برنامه</span>
+                    </button>
+                    <button class="btn btn-outline" onclick="printSchedule()" title="چاپ">
+                        <span class="material-icons-round">print</span>
+                        <span>چاپ</span>
+                    </button>
+                </div>
+            </div>
+            <p class="section-hint">
+                <span class="material-icons-round" style="font-size:1rem; vertical-align:middle;">touch_app</span>
+                روی هر خانه کلیک کنید تا کلاس جدید اضافه یا ویرایش کنید.
+            </p>
+            <div class="schedule-toolbar">
+                <div class="schedule-view-switch" role="group" aria-label="نمای برنامه هفتگی">
+                    <button type="button" class="view-btn active" data-view="all"
+                            onclick="setScheduleView('all', this)">همه</button>
+                    <button type="button" class="view-btn" id="view-week-btn" data-view="week" hidden
+                            onclick="setScheduleView('week', this)">این هفته</button>
+                    <button type="button" class="view-btn" data-view="odd"
+                            onclick="setScheduleView('odd', this)">فرد</button>
+                    <button type="button" class="view-btn" data-view="even"
+                            onclick="setScheduleView('even', this)">زوج</button>
+                </div>
+                <div class="semester-start-box">
+                    <label for="semester-start-input">اول ترم (شمسی):</label>
+                    <input type="text" id="semester-start-input" class="form-control"
+                           placeholder="۱۴۰۵/۰۷/۰۱" inputmode="numeric" autocomplete="off"
+                           aria-label="تاریخ اول ترم به شمسی">
+                    <button type="button" class="btn btn-outline" onclick="saveSemesterStart()">ثبت</button>
+                    <button type="button" class="btn btn-outline semester-clear-btn" id="semester-clear-btn"
+                            hidden onclick="clearSemesterStart()" title="حذف تنظیم اول ترم">✖</button>
+                    <span class="week-marker week-parity-chip" id="current-week-parity" hidden></span>
+                </div>
+            </div>
+            <div class="schedule-wrapper">
+                <div class="schedule-grid" id="schedule-table">
+                    <div class="schedule-header corner-cell"></div>
+                    <div class="schedule-header">شنبه</div>
+                    <div class="schedule-header">یکشنبه</div>
+                    <div class="schedule-header">دوشنبه</div>
+                    <div class="schedule-header">سه‌شنبه</div>
+                    <div class="schedule-header">چهارشنبه</div>
+
+                    {% set times = schedule_slots %}
+                    {% set time_labels = schedule_slot_labels %}
+                    {% set day_names_fa = schedule_day_names_fa %}
+                    {% for i in range(6) %}
+                        <div class="schedule-time">{{ time_labels[i] }}</div>
+                        {% for day in schedule_grid_days %}
+                            <div class="schedule-cell clickable-cell"
+                                 data-day="{{ day }}"
+                                 data-time="{{ times[i] }}"
+                                 tabindex="0" role="button"
+                                 aria-label="افزودن یا ویرایش کلاس — {{ day_names_fa[day] }} ساعت {{ time_labels[i] }}"
+                                 onclick="cellClicked(this)">
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- نمای روزبه‌روز برای موبایل (زیر ۷۶۸ پیکسل) — همان داده، همان مودال -->
+            <div class="schedule-agenda" id="schedule-agenda"></div>
+            <div class="legend-row schedule-legend">
+                <div class="legend-item">
+                    <span class="week-marker week-odd"><span class="material-icons-round">filter_1</span> فرد</span>
+                </div>
+                <div class="legend-item">
+                    <span class="week-marker week-even"><span class="material-icons-round">filter_2</span> زوج</span>
+                </div>
+                <div class="legend-item">
+                    <span class="week-marker week-all"><span class="material-icons-round">all_inclusive</span> هر هفته</span>
+                </div>
+                <div class="legend-item">
+                    <span class="week-marker conflict-marker"><span class="material-icons-round">report</span> تداخل</span>
+                </div>
+            </div>
+            <!-- مجموع واحدها (B6) — بدون جزئیات؛ بلافاصله بعد از افزودن/تغییر/حذف به‌روز می‌شود -->
+            <div class="units-bar">
+                <span class="total-units" id="total-units"
+                      aria-live="polite">
+                    <span class="material-icons-round">calculate</span>
+                    <span id="total-units-text">مجموع واحدها: ۰</span>
+                </span>
+                <span class="catalog-hint">
+                    <span class="material-icons-round" style="font-size:.95rem; vertical-align:middle;">menu_book</span>
+                    برای افزودن درس از کاتالوگ، روی خانهٔ خالی کلیک کنید.
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div id="reserve-room" class="tab-content">
+        <div class="glass-card section-card">
+            <div class="section-card-header">
+                <div class="section-card-title">
+                    <span class="material-icons-round">meeting_room</span>
+                    <h2>وضعیت کلاس‌های خالی</h2>
+                </div>
+                <button class="btn btn-outline" onclick="loadAvailableSlots()">
+                    <span class="material-icons-round">refresh</span>
+                    <span>بروزرسانی</span>
+                </button>
+            </div>
+            <p class="section-hint">
+                <span class="material-icons-round" style="font-size:1rem; vertical-align:middle;">info_outline</span>
+                کلاس‌های رنگی قابل رزرو هستند. روی هر کلاس کلیک کنید تا درخواست رزرو ثبت کنید.
+            </p>
+            <div class="schedule-wrapper">
+                <div class="schedule-grid" id="reservation-table">
+                    <div class="schedule-header corner-cell"></div>
+                    <div class="schedule-header">شنبه</div>
+                    <div class="schedule-header">یکشنبه</div>
+                    <div class="schedule-header">دوشنبه</div>
+                    <div class="schedule-header">سه‌شنبه</div>
+                    <div class="schedule-header">چهارشنبه</div>
+
+                    {% for i in range(6) %}
+                        <div class="schedule-time">{{ time_labels[i] }}</div>
+                        {% for day in ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday'] %}
+                            <div class="schedule-cell reserve-cell"
+                                 data-day="{{ day }}"
+                                 data-time="{{ times[i] }}">
+                                <span class="cell-loading">...</span>
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="legend-row">
+                <div class="legend-item">
+                    <span class="legend-dot available"></span>
+                    <span>کلاس خالی (قابل رزرو)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot reserved"></span>
+                    <span>رزرو شده</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot empty-slot"></span>
+                    <span>تعریف نشده</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cancelled-classes" class="tab-content">
+        <div class="glass-card section-card">
+            <div class="section-card-header">
+                <div class="section-card-title">
+                    <span class="material-icons-round">event_busy</span>
+                    <h2>کلاس‌های لغو شده</h2>
+                </div>
+            </div>
+
+            {% if all_cancelled_classes %}
+                <div class="cancelled-grid">
+                    {% for c in all_cancelled_classes %}
+                        <div class="cancelled-card" data-cancel-id="{{ c.id }}">
+                            <div class="cancelled-card-header">
+                                <div class="cancelled-course-info">
+                                    {% if c.course_name %}
+                                        <span class="cancelled-course-name">{{ c.course_name }}</span>
+                                    {% else %}
+                                        <span class="cancelled-course-name cancelled-all-classes">
+                                            تمامی کلاس‌های استاد
+                                        </span>
+                                    {% endif %}
+                                    {% if c.professor_name %}
+                                        <span class="cancelled-professor">
+                                            <span class="material-icons-round" style="font-size:.9rem;">person</span>
+                                            استاد {{ c.professor_name }}
+                                        </span>
+                                    {% endif %}
+                                    {% if c.time_slot %}
+                                        <span class="cancelled-timeslot">
+                                            <span class="material-icons-round" style="font-size:.85rem;">access_time</span>
+                                            ساعت {{ c.time_slot }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="cancelled-date-badge">
+                                    {% if c.cancel_date %}
+                                        <span class="material-icons-round">event</span>
+                                        <span class="jalali-date" data-gregorian="{{ c.cancel_date.strftime('%Y-%m-%d') }}">
+                                            {{ c.cancel_date.strftime('%Y/%m/%d') }}
+                                        </span>
+                                    {% elif c.start_date %}
+                                        <span class="material-icons-round">date_range</span>
+                                        <span class="jalali-date" data-gregorian="{{ c.start_date.strftime('%Y-%m-%d') }}">
+                                            {{ c.start_date.strftime('%Y/%m/%d') }}
+                                        </span>
+                                        تا
+                                        {% if c.end_date %}
+                                            <span class="jalali-date" data-gregorian="{{ c.end_date.strftime('%Y-%m-%d') }}">
+                                                {{ c.end_date.strftime('%Y/%m/%d') }}
+                                            </span>
+                                        {% else %}
+                                            ?
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="material-icons-round">all_inclusive</span>
+                                        نامشخص
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if not c.course_name and c.professor_name %}
+                                <div class="cancelled-all-notice">
+                                    <span class="material-icons-round" style="font-size:.95rem; color:var(--error);">info</span>
+                                    تمامی کلاس‌های این استاد در روز مذکور برگزار نخواهد شد.
+                                </div>
+                            {% endif %}
+                            {% if c.description %}
+                                <div class="cancelled-desc">
+                                    <span class="material-icons-round" style="font-size:.9rem;">notes</span>
+                                    {{ c.description }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state-full">
+                    <span class="material-icons-round">event_available</span>
+                    <h3>هیچ کلاسی لغو نشده است</h3>
+                    <p>در صورت لغو هر کلاسی توسط مدیریت، در اینجا نمایش داده می‌شود.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div><!-- /dashboard-container -->
+
+<!-- Modal: ویرایش برنامه هفتگی -->
+<div id="edit-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'edit-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-card-header">
+            <h3 id="modal-title">افزودن کلاس</h3>
+            <button class="modal-close-btn" onclick="closeModal('edit-modal')">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <form id="schedule-form" onsubmit="handleScheduleSubmit(event)">
+            <input type="hidden" id="day-input">
+            <input type="hidden" id="time-input">
+            <input type="hidden" id="edit-record-id" value="">
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">menu_book</span>
+                    نام درس
+                </label>
+                <input type="text" id="course-name" class="form-control"
+                       placeholder="مثال: ریاضی مهندسی" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">person</span>
+                    نام استاد
+                </label>
+                <input type="text" id="professor-name" class="form-control"
+                       placeholder="مثال: دکتر محمدی" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">location_on</span>
+                    محل برگزاری
+                </label>
+                <input type="text" id="class-location" class="form-control"
+                       placeholder="مثال: کلاس ۱۰۱" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">repeat</span>
+                    نوع هفته
+                </label>
+                <div class="week-type-selector">
+                    <label class="week-type-option">
+                        <input type="radio" name="week_type" value="all" checked>
+                        <span class="week-type-label all">هر هفته</span>
+                    </label>
+                    <label class="week-type-option">
+                        <input type="radio" name="week_type" value="odd">
+                        <span class="week-type-label odd">هفته فرد</span>
+                    </label>
+                    <label class="week-type-option">
+                        <input type="radio" name="week_type" value="even">
+                        <span class="week-type-label even">هفته زوج</span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">calculate</span>
+                    واحد (اختیاری)
+                </label>
+                <input type="text" id="class-units" class="form-control"
+                       inputmode="decimal" autocomplete="off"
+                       placeholder="مثال: ۳ یا ۱٫۵ — خالی = بدون واحد">
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-custom">
+                    <span class="material-icons-round">save</span> ذخیره
+                </button>
+                <button type="button" class="btn btn-danger-outline" onclick="deleteClass()">
+                    <span class="material-icons-round">delete_outline</span> حذف
+                </button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('edit-modal')">
+                    انصراف
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: افزودن درس از کاتالوگ (B3) — جایگیری از کاتالوگ است، نه خانهٔ کلیک‌شده -->
+<div id="add-class-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'add-class-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-card-header">
+            <h3>افزودن درس به برنامه</h3>
+            <button class="modal-close-btn" onclick="closeModal('add-class-modal')">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <p class="catalog-hint" id="add-class-cell-hint"></p>
+        <div class="form-group">
+            <label class="form-label">
+                <span class="material-icons-round form-label-icon">search</span>
+                نام درس، کد درس…
+            </label>
+            <div class="catalog-search-wrap">
+                <input type="text" id="catalog-search-input" class="form-control"
+                       autocomplete="off" placeholder="مثال: سیستم — حداقل ۲ حرف"
+                       oninput="onCatalogSearchInput()"
+                       onkeydown="onCatalogSearchKey(event)">
+                <ul class="catalog-suggestions" id="catalog-suggestions"
+                    role="listbox"></ul>
+            </div>
+        </div>
+        <div class="form-group" style="max-width:140px;">
+            <label class="form-label">
+                <span class="material-icons-round form-label-icon">group</span>
+                گروه
+            </label>
+            <input type="text" id="catalog-group-input" class="form-control"
+                   inputmode="numeric" autocomplete="off" placeholder="اختیاری"
+                   oninput="onCatalogSearchInput()"
+                   onkeydown="onCatalogSearchKey(event)">
+        </div>
+        <div class="catalog-preview" id="catalog-preview"></div>
+        <div class="catalog-warning-box" id="catalog-warning-box"></div>
+        <button type="button" class="btn btn-outline catalog-none-btn"
+                onclick="openManualFields()">
+            <span class="material-icons-round">edit_note</span>
+            درس من در فهرست نیست (ثبت دستی)
+        </button>
+        <form id="manual-class-form" class="manual-fields"
+              onsubmit="handleManualSubmit(event)">
+            <input type="hidden" id="manual-day">
+            <input type="hidden" id="manual-time">
+            <input type="hidden" id="manual-week-preset" value="all">
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">menu_book</span>
+                    نام درس
+                </label>
+                <input type="text" id="manual-course-name" class="form-control"
+                       placeholder="مثال: ریاضی مهندسی" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">person</span>
+                    نام استاد (اختیاری)
+                </label>
+                <input type="text" id="manual-professor" class="form-control"
+                       placeholder="مثال: دکتر احمدی" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">pin_drop</span>
+                    محل برگزاری (اختیاری)
+                </label>
+                <input type="text" id="manual-location" class="form-control"
+                       placeholder="مثال: کلاس ۲۱۰" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">repeat</span>
+                    نوع هفته
+                </label>
+                <div class="week-type-selector">
+                    <label class="week-type-option">
+                        <input type="radio" name="manual_week_type" value="all" checked>
+                        <span class="week-type-label all">هر هفته</span>
+                    </label>
+                    <label class="week-type-option">
+                        <input type="radio" name="manual_week_type" value="odd">
+                        <span class="week-type-label odd">هفته فرد</span>
+                    </label>
+                    <label class="week-type-option">
+                        <input type="radio" name="manual_week_type" value="even">
+                        <span class="week-type-label even">هفته زوج</span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">calculate</span>
+                    واحد (اختیاری)
+                </label>
+                <input type="text" id="manual-units" class="form-control"
+                       inputmode="decimal" autocomplete="off"
+                       placeholder="مثال: ۳ — خالی = بدون واحد">
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-custom">
+                    <span class="material-icons-round">save</span> ذخیره
+                </button>
+                <button type="button" class="btn btn-outline"
+                        onclick="closeModal('add-class-modal')">انصراف</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: جزئیات درسِ کاتالوگی (B5) -->
+<div id="course-details-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'course-details-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-card-header">
+            <h3 id="course-details-title">جزئیات درس</h3>
+            <button class="modal-close-btn" onclick="closeModal('course-details-modal')">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <div id="course-details-body"></div>
+        <div id="course-group-picker" class="detail-group-list"></div>
+        <div class="catalog-search-wrap" id="course-change-search"
+             style="display:none; margin-top:.6rem;">
+            <input type="text" id="change-course-input" class="form-control"
+                   placeholder="نام درس جدید را تایپ کنید…" autocomplete="off"
+                   oninput="onChangeCourseSearchInput()"
+                   onkeydown="onChangeCourseSearchKey(event)">
+            <ul class="catalog-suggestions" id="change-course-suggestions"></ul>
+        </div>
+        <div class="detail-actions">
+            <button class="btn btn-outline" id="btn-change-group"
+                    onclick="toggleGroupPicker()">
+                <span class="material-icons-round">swap_horiz</span> تغییر گروه
+            </button>
+            <button class="btn btn-outline" onclick="toggleChangeCourse()">
+                <span class="material-icons-round">menu_book</span> تغییر درس
+            </button>
+            <button class="btn btn-danger-outline" onclick="deleteEnrollment()">
+                <span class="material-icons-round">delete_outline</span> حذف از برنامه
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: رزرو کلاس -->
+<div id="reserve-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'reserve-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-card-header">
+            <h3>درخواست رزرو کلاس</h3>
+            <button class="modal-close-btn" onclick="closeModal('reserve-modal')">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <div class="reserve-slot-info-card" id="reserve-slot-info-card">
+            <div class="slot-info-row">
+                <span class="material-icons-round">meeting_room</span>
+                <span id="reserve-room-display">—</span>
+            </div>
+            <div class="slot-info-row">
+                <span class="material-icons-round">access_time</span>
+                <span id="reserve-time-display">—</span>
+            </div>
+        </div>
+        <form id="reserve-form" method="POST" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="form-label">
+                    <span class="material-icons-round form-label-icon">description</span>
+                    دلیل رزرو
+                </label>
+                <textarea id="reserve-reason" name="reason" class="form-control"
+                          rows="3" required
+                          placeholder="مثال: جلسه انجمن علمی، کلاس جبرانی..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-custom">
+                    <span class="material-icons-round">send</span> ارسال درخواست
+                </button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('reserve-modal')">
+                    انصراف
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: وارد کردن از اکسل -->
+<div id="paste-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'paste-modal')">
+    <div class="modal-card modal-wide" onclick="event.stopPropagation()">
+        <div class="modal-card-header">
+            <h3>وارد کردن برنامه از اکسل</h3>
+            <button class="modal-close-btn" onclick="closeModal('paste-modal')">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <div class="excel-guide">
+            <p class="guide-title"><span class="material-icons-round">help_outline</span> راهنما:</p>
+            <p>جدول برنامه هفتگی خود را انتخاب و کپی کنید، سپس آن را در کادر زیر بچسبانید.</p>
+            <p>سیستم به‌صورت خودکار نام درس، استاد، محل و نوع هفته (زوج/فرد) را تشخیص می‌دهد.</p>
+            <p class="guide-hint">فرمت پیشنهادی هر خانه: <code>نام درس | استاد | محل | زوج/فرد</code></p>
+        </div>
+        <div class="form-group">
+            <label class="form-label">محتوای کپی‌شده را اینجا پیست کنید:</label>
+            <textarea id="excel-paste-area" class="form-control excel-paste-area"
+                      rows="8"
+                      placeholder="محتوای کپی‌شده را اینجا بچسبانید..."
+                      onpaste="setTimeout(() => parseExcelPaste(), 100)"
+                      oninput="parseExcelPaste()"></textarea>
+        </div>
+        <div id="paste-preview" class="paste-preview" style="display:none;">
+            <h4><span class="material-icons-round">preview</span> پیش‌نمایش ({{ "{}" }} ردیف تشخیص داده شد)</h4>
+            <div id="paste-preview-table"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-custom" onclick="applyPastedSchedule()" id="apply-paste-btn" disabled>
+                <span class="material-icons-round">check</span> اعمال برنامه
+            </button>
+            <button class="btn btn-outline" onclick="closeModal('paste-modal')">انصراف</button>
+        </div>
+    </div>
+</div>
+
+<style>
+
+/* =====================================================
+   Dashboard — 2026 Dark Glassmorphism
+   Fit-to-viewport: صفحه دقیقاً در یک اسکرین جا می‌شود؛
+   فقط جدول برنامه و لیست اطلاعیه‌ها به‌صورت داخلی اسکرول دارند.
+   ===================================================== */
+.dashboard-container{
+    padding:0.4rem 0.25rem 0.25rem; max-width:1400px; width:100%;
+    margin:0 auto; position:relative; z-index:1;
+    flex:1; min-height:0;
+    display:flex; flex-direction:column; gap:0.55rem;
+}
+
+.dashboard-top-row{ display:grid; grid-template-columns:300px 1fr; gap:0.55rem; flex-shrink:0; }
+@media (max-width:768px){ .dashboard-top-row{ grid-template-columns:1fr; } }
+
+.datetime-widget{
+    background:linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+    border-radius:var(--radius-lg);
+    padding:0.7rem 0.9rem;
+    color:#fff;
+    box-shadow:0 12px 32px rgba(0,131,143,0.4);
+    border:1px solid rgba(255,255,255,0.12);
+    position:relative;
+    overflow:hidden;
+}
+.datetime-widget::after{
+    content:''; position:absolute; width:120px; height:120px;
+    border-radius:50%; background:rgba(255,255,255,0.12);
+    top:-45px; left:-45px;
+}
+.datetime-inner{ display:flex; flex-direction:column; gap:0.3rem; position:relative; z-index:1; }
+.datetime-top{ display:flex; align-items:center; gap:0.75rem; }
+.datetime-icon-area{
+    width:42px; height:42px; background:rgba(255,255,255,0.18);
+    border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.datetime-main-icon{ font-size:1.5rem; }
+.datetime-weekday{ font-size:1.25rem; font-weight:800; line-height:1.15; }
+.datetime-date{ font-size:0.78rem; opacity:0.85; margin-top:0.1rem; }
+.datetime-divider{ height:1px; background:rgba(255,255,255,0.25); margin:0.05rem 0; }
+.datetime-clock-row{ display:flex; align-items:center; gap:0.35rem; opacity:0.9; }
+.datetime-clock-row .material-icons-round{ font-size:1rem !important; }
+.datetime-clock{ font-size:1.3rem; font-weight:300; font-family:'Courier New', monospace; letter-spacing:1.5px; line-height:1.2; }
+
+.notifications-widget{
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg); padding:0.6rem 0.9rem;
+    backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
+    box-shadow:var(--shadow-glass);
+    display:flex; flex-direction:column; gap:0.35rem;
+    min-height:0; overflow:hidden;
+}
+.widget-header{ display:flex; align-items:center; gap:0.4rem; font-weight:700; font-size:0.88rem; color:var(--text-primary); flex-shrink:0; }
+.widget-header .material-icons-round{ color:var(--brand-light); font-size:1.05rem; }
+.notif-count-badge{ background:var(--brand); color:#fff; border-radius:20px; padding:0.05rem 0.5rem; font-size:0.7rem; font-weight:700; }
+.notif-list{ list-style:none; overflow-y:auto; flex:1; min-height:0; max-height:118px; scrollbar-width:thin; }
+.notif-item{ display:flex; align-items:flex-start; gap:0.4rem; padding:0.32rem 0.5rem; border-radius:var(--radius-sm); cursor:pointer; transition:background 0.2s; margin-bottom:0.2rem; }
+.notif-item:hover{ background:var(--glass-bg-strong); }
+.notif-item.unread{ background:rgba(38,198,218,0.08); border-right:3px solid var(--brand-light); }
+.notif-icon{ font-size:1rem !important; color:var(--brand-light); flex-shrink:0; margin-top:2px; }
+.notif-body{ display:flex; flex-direction:column; gap:0; min-width:0; }
+.notif-text{ font-size:0.8rem; color:var(--text-primary); line-height:1.45; }
+.notif-time{ font-size:0.68rem; color:var(--text-muted); }
+.empty-notif{ display:flex; align-items:center; gap:0.5rem; color:var(--text-secondary); font-size:0.84rem; padding:0.4rem; }
+.empty-notif .material-icons-round{ color:var(--success); }
+
+.cancelled-alert-banner{
+    display:flex; align-items:flex-start; gap:0.7rem;
+    background:rgba(255,92,114,0.08); border:1px solid rgba(255,92,114,0.28);
+    border-right:4px solid var(--error);
+    border-radius:var(--radius-md); padding:0.5rem 0.85rem;
+    backdrop-filter:blur(12px); flex-shrink:0;
+}
+.alert-icon{ color:var(--error); flex-shrink:0; margin-top:2px; }
+.alert-icon .material-icons-round{ font-size:1.25rem; }
+.alert-content{ font-size:0.82rem; display:flex; flex-direction:column; gap:0.15rem; color:var(--text-primary); max-height:64px; overflow-y:auto; }
+.alert-item{ color:var(--error); }
+
+.tabs-bar{
+    display:flex; gap:0.3rem;
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:var(--radius-md); padding:0.28rem;
+    backdrop-filter:blur(16px); flex-shrink:0;
+}
+.dash-tab{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:0.35rem;
+    padding:0.45rem 0.8rem; border:none; background:transparent;
+    border-radius:var(--radius-sm); cursor:pointer;
+    font-family:inherit; font-size:0.85rem; font-weight:500;
+    color:var(--text-secondary); transition:all 0.25s var(--ease);
+    position:relative;
+}
+.dash-tab .material-icons-round{ font-size:1.05rem; }
+.dash-tab:hover{ background:var(--glass-bg-strong); color:var(--text-primary); }
+.dash-tab.active{
+    background:linear-gradient(135deg, var(--brand), var(--brand-dark));
+    color:#fff; box-shadow:0 6px 18px rgba(0,131,143,0.4);
+}
+.tab-badge{ background:rgba(255,255,255,0.3); color:#fff; border-radius:20px; padding:0.05rem 0.45rem; font-size:0.7rem; font-weight:700; transition:opacity 0.3s, transform 0.3s; }
+.tab-badge.hiding{ opacity:0; transform:scale(0.5); }
+.dash-tab:not(.active) .tab-badge{ background:var(--brand); color:#fff; }
+@media (max-width:600px){ .dash-tab span:not(.material-icons-round){ display:none; } .dash-tab{ padding:0.55rem; } }
+
+.tab-content{ display:none; animation:dashFadeIn 0.3s ease; }
+.tab-content.active{ display:flex; flex-direction:column; flex:1; min-height:0; }
+@keyframes dashFadeIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+
+.section-card{
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg); padding:0.65rem 0.85rem 0.75rem;
+    backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
+    box-shadow:var(--shadow-glass);
+    flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;
+}
+.section-card-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem; flex-shrink:0; }
+.section-card-title{ display:flex; align-items:center; gap:0.4rem; color:var(--text-primary); }
+.section-card-title .material-icons-round{ font-size:1.2rem; color:var(--brand-light); }
+.section-card-title h2{ font-size:1.02rem; font-weight:700; margin:0; }
+.section-card-actions{ display:flex; gap:0.4rem; flex-wrap:wrap; }
+.section-card-actions .btn{ padding:0.38rem 0.75rem; font-size:0.78rem; }
+.section-hint{
+    font-size:0.74rem; color:var(--text-secondary);
+    background:var(--glass-bg-strong); border-radius:var(--radius-sm);
+    padding:0.22rem 0.6rem; margin-bottom:0.4rem; flex-shrink:0;
+}
+
+/* ---------- Buttons ---------- */
+.btn{ display:inline-flex; align-items:center; gap:0.4rem; padding:0.65rem 1.1rem; border-radius:var(--radius-pill); font-weight:600; font-size:0.86rem; border:1px solid transparent; cursor:pointer; font-family:inherit; transition:all 0.25s var(--ease); }
+.btn .material-icons-round{ font-size:1.1rem; }
+.btn-outline{ background:var(--glass-bg-strong); border:1px solid var(--glass-border-strong); color:var(--text-primary); }
+.btn-outline:hover{ background:rgba(255,255,255,0.12); transform:translateY(-2px); }
+.btn-custom{ background:linear-gradient(135deg, var(--brand-light), var(--brand)); color:#03161A; box-shadow:0 6px 18px rgba(38,198,218,0.35); }
+.btn-custom:hover{ transform:translateY(-2px); box-shadow:0 10px 26px rgba(38,198,218,0.5); }
+.btn-danger-outline{ background:transparent; border:1px solid var(--error); color:var(--error); display:inline-flex; align-items:center; gap:0.3rem; padding:0.65rem 1.2rem; border-radius:var(--radius-pill); cursor:pointer; font-family:inherit; font-size:0.86rem; transition:background 0.2s; }
+.btn-danger-outline:hover{ background:rgba(255,92,114,0.1); }
+
+/* ---------- Schedule grid — ستون‌ها minmax(96px,auto)، بدون برش محتوا ---------- */
+.schedule-wrapper{ overflow:auto; flex:1; min-height:0; scrollbar-width:thin; }
+.schedule-grid{
+    display:grid; grid-template-columns:56px repeat(5, minmax(96px, auto));
+    /* ردیف‌ها کاملاً auto: هر ردیف به اندازهٔ بلندترین سلولش رشد می‌کند.
+       minmax(52px,auto) فقط «کف» ارتفاع است؛ هیچ سقفی برای رشد وجود ندارد
+       (رفع ریشه‌ایِ بریده‌شدن کارت‌ها — نه height:1fr و نه overflow:hidden) */
+    grid-template-rows:auto repeat(6, minmax(52px, auto));
+    min-height:min-content;
+    gap:1px; background:var(--glass-border);
+    border:1px solid var(--glass-border); border-radius:var(--radius-md);
+    min-width:560px;
+}
+.schedule-header{ background:var(--bg-2); padding:0.32rem 0.3rem; text-align:center; font-weight:700; font-size:0.74rem; color:var(--text-secondary); }
+.corner-cell{ background:var(--bg-2); }
+.schedule-time{ background:var(--bg-2); padding:0.3rem 0.2rem; text-align:center; font-size:0.68rem; font-weight:600; color:var(--text-secondary); display:flex; align-items:center; justify-content:center; }
+.schedule-cell{ background:var(--bg-1); min-height:52px; padding:0.25rem; position:relative; }
+.clickable-cell{ cursor:pointer; transition:background 0.18s; }
+.clickable-cell:hover{ background:rgba(38,198,218,0.06); }
+.schedule-cell:focus-visible{ outline:2px solid var(--brand-light); outline-offset:-2px; }
+
+/* «+» ملایمِ خانهٔ خالی (همیشه کم‌رنگ، در hover پررنگ‌تر) */
+.cell-empty-plus{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:1.15rem; font-weight:300; color:var(--brand-light);
+    opacity:0.22; pointer-events:none; transition:opacity 0.15s;
+}
+.clickable-cell:hover .cell-empty-plus{ opacity:0.6; }
+
+/* چیپ نوع هفته — در کارت‌ها، راهنما، آژندا و برگهٔ چاپ */
+.week-marker{
+    display:inline-flex; align-items:center; gap:2px;
+    padding:0.06rem 0.42rem; border-radius:20px;
+    font-size:0.6rem; font-weight:700; line-height:1.5; white-space:nowrap;
+}
+.week-marker .material-icons-round{ font-size:0.7rem; }
+.week-marker.week-odd{ background:rgba(33,150,243,0.18); color:#64B5F6; }
+.week-marker.week-even{ background:rgba(76,175,80,0.18); color:#81C784; }
+.week-marker.week-all{ background:rgba(38,198,218,0.18); color:var(--brand-light); }
+.week-marker.conflict-marker{ background:rgba(255,92,114,0.18); color:var(--error); }
+html.light-mode .week-marker.week-odd{ color:#1565C0; }
+html.light-mode .week-marker.week-even{ color:#2E7D32; }
+
+/* نوار «+ هفته زوج/فرد» زیر کارتِ فقط-یک-جفت (۲۴ پیکسل) */
+.cell-add-strip{
+    height:24px; min-height:24px; width:100%;
+    display:flex; align-items:center; justify-content:center; gap:2px;
+    border:1.5px dashed var(--glass-border-strong); border-radius:6px;
+    background:transparent; cursor:pointer; font-family:inherit;
+    color:var(--text-secondary); font-size:0.6rem; font-weight:600;
+    transition:all 0.15s;
+}
+.cell-add-strip:hover{ border-color:var(--brand-light); color:var(--brand-light); background:rgba(38,198,218,0.05); }
+.cell-add-strip .material-icons-round{ font-size:0.8rem; }
+/* پشتهٔ چند کارت در یک خانه (فرد+زوج، یا تداخل ۳+) — کارت‌ها با ارتفاع
+   طبیعیِ خودشان؛ سلول تا جایی که محتوا لازم دارد رشد می‌کند */
+.cell-class-stack{ display:flex; flex-direction:column; gap:4px; }
+.cell-class-stack > *{ flex:0 0 auto; }
+
+/* کارتِ تمام-قد برای نوع هفتهٔ مشخص (فقط فرد یا فقط زوج) */
+.card-parity.bg-odd{ background:rgba(33,150,243,0.10); border:1px solid rgba(33,150,243,0.18); border-right:3px solid #42A5F5; }
+.card-parity.bg-even{ background:rgba(76,175,80,0.10); border:1px solid rgba(76,175,80,0.18); border-right:3px solid #66BB6A; }
+
+/* کارتِ هفتهٔ غیرفعال (در نمای «همه» کم‌رنگ می‌شود) */
+.card-dim{ opacity:0.55; filter:saturate(0.55); }
+
+/* نشان قرمز «تداخل» — چیپِ عادی داخل ردیفِ چیپ‌های کارت (هیچ‌وقت روی
+   عنوان نمی‌افتد؛ برای خانهٔ بدون کارت هم به‌صورت ردیفِ جدا نمایش داده می‌شود) */
+.cell-conflict-badge{
+    display:inline-flex; align-items:center; gap:2px;
+    background:var(--error); color:#fff;
+    font-size:0.56rem; font-weight:800; line-height:1.4;
+    border-radius:10px; padding:0.05rem 0.4rem;
+    box-shadow:0 1px 4px rgba(255,60,60,0.45);
+}
+.cell-conflict-standalone{ margin-bottom:2px; }
+.schedule-cell.has-conflict{ outline:1.5px solid var(--error); outline-offset:-1.5px; }
+
+/* نوار ابزار: کلیدهای نمایش + تنظیم اول ترم */
+.schedule-toolbar{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:0.5rem; flex-wrap:wrap; margin-bottom:0.4rem; flex-shrink:0;
+}
+.schedule-view-switch{
+    display:inline-flex; gap:2px;
+    background:var(--glass-bg-strong); border:1px solid var(--glass-border);
+    border-radius:var(--radius-pill); padding:2px;
+}
+.view-btn{
+    border:none; background:transparent; color:var(--text-secondary);
+    font-family:inherit; font-size:0.72rem; font-weight:600;
+    padding:0.28rem 0.7rem; border-radius:var(--radius-pill);
+    cursor:pointer; transition:all 0.18s;
+}
+.view-btn:hover{ color:var(--text-primary); }
+.view-btn.active{
+    background:linear-gradient(135deg, var(--brand-light), var(--brand));
+    color:#03161A; box-shadow:0 2px 8px rgba(38,198,218,0.35);
+}
+.semester-start-box{
+    display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;
+    font-size:0.72rem; color:var(--text-secondary);
+}
+.semester-start-box input{
+    width:100px; padding:0.28rem 0.45rem; font-size:0.76rem;
+    text-align:center; font-family:inherit;
+    background:var(--glass-bg-strong); color:var(--text-primary);
+    border:1px solid var(--glass-border-strong); border-radius:var(--radius-sm);
+}
+.semester-start-box .btn{ padding:0.3rem 0.7rem; font-size:0.72rem; }
+.semester-clear-btn{ color:var(--error); border-color:var(--error); }
+
+/* آژندای روزبه‌روز (زیر ۷۶۸ پیکسل) */
+.schedule-agenda{ display:none; flex-direction:column; gap:0.5rem; }
+.agenda-day{
+    background:var(--glass-bg-strong); border:1px solid var(--glass-border);
+    border-radius:var(--radius-md); padding:0.45rem 0.6rem;
+}
+.agenda-day h4{ margin:0 0 0.25rem; font-size:0.84rem; color:var(--text-primary); }
+.agenda-row{
+    display:flex; align-items:center; gap:0.55rem; width:100%;
+    background:transparent; border:none; border-top:1px solid var(--glass-border);
+    padding:0.42rem 0.15rem; cursor:pointer; font-family:inherit;
+    color:var(--text-primary); text-align:right;
+}
+.agenda-row:focus-visible{ outline:2px solid var(--brand-light); outline-offset:-2px; }
+.agenda-time{ font-size:0.72rem; font-weight:700; color:var(--brand-light); min-width:70px; }
+.agenda-main{ flex:1; display:flex; flex-direction:column; min-width:0; }
+.agenda-course{ font-size:0.8rem; font-weight:700; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.agenda-meta{ font-size:0.68rem; color:var(--text-secondary); overflow-wrap:anywhere; white-space:normal; }
+.agenda-empty{ font-size:0.72rem; color:var(--text-secondary); margin:0.15rem 0; opacity:0.7; }
+@media (max-width:767px){
+    .schedule-wrapper{ display:none; }
+    .schedule-agenda{ display:flex; }
+}
+/* ── آناتومی کارت (یکسان برای هر هفته/فرد/زوج/تداخل):
+   ردیف چیپ‌ها ← نام درس (حداکثر ۳ خط، ≥۱۲px) ← استاد ← مکان ← ساعت دقیق
+   (اگر با برچسب اسلات فرق دارد). عمداً بدون height:100% و بدون
+   overflow:hidden تا هیچ خطی هرگز بریده نشود (رفع ریشهٔ باگ‌های PART A). ── */
+.cell-class-all{ background:rgba(0,131,143,0.10); border-radius:8px; padding:0.3rem 0.45rem; display:flex; flex-direction:column; justify-content:flex-start; gap:2px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid rgba(0,131,143,0.12); border-right:3px solid var(--brand-light); transition:transform 0.15s, box-shadow 0.15s; cursor:pointer; text-align:right; font-family:inherit; color:inherit; width:100%; }
+.cell-class-all:hover{ box-shadow:0 4px 14px rgba(0,131,143,0.15); }
+/* ردیف چیپ‌ها: نوع هفته + گروه + تداخل — می‌تواند چند خط شود و هرگز روی
+   عنوان نمی‌افتد (چون عنوان بعداً و در جریان عادیِ ستون است) */
+.card-chips{ display:flex; flex-wrap:wrap; align-items:center; gap:3px; }
+/* ریشهٔ اثبات‌شده: static/css/glass-system.css قاعدهٔ عمومیِ .cell-name با
+   white-space:nowrap + text-overflow:ellipsis دارد و base.html آن را دوبار
+   (بعد از بلوک content) لود می‌کند؛ بنابراین با specificity برابر همیشه
+   glass برنده می‌شد و نام کارت را تک‌خطی می‌برید (باف‌گواهی
+   scrollWidth>clientWidth در tests/test_layout_parta.py). اینجا با
+   specificity بالاتر (.schedule-grid .cell-name) بازنویسی می‌شود تا نام:
+   چندخطی + clamp حداکثر ۳ خط + بدون برش افقی (tooltip کامل از title).
+   (فونتِ glass با !important می‌آید: 0.8rem = ۱۲.۸px که ≥۱۲px است.) */
+.schedule-grid .cell-name{ font-size:max(12px, 0.78rem); font-weight:800; color:var(--text-primary); line-height:1.35; overflow-wrap:anywhere; white-space:normal; text-overflow:clip; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.card-meta{ display:flex; flex-wrap:wrap; gap:1px 8px; }
+/* استاد و مکان: هر کدام در خط خود با آیکون؛ فقط اگر در یک خط جا شوند کنار
+   هم می‌نشینند (flex-wrap) و هر کدام حداکثر ۲ خط می‌شود سپس ... می‌گیرد */
+.meta-line{ display:inline-flex; align-items:flex-start; gap:3px; font-size:0.64rem; color:var(--text-secondary); line-height:1.35; opacity:0.85; max-width:100%; }
+.meta-line .material-icons-round{ font-size:0.72rem; margin-top:1px; flex-shrink:0; }
+.meta-text{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; }
+.card-exact-time{ font-size:0.6rem; font-weight:700; color:var(--brand-light); display:inline-flex; align-items:center; gap:3px; }
+.card-exact-time .material-icons-round{ font-size:0.68rem; }
+/* گروهِ حذف‌شدهٔ نرم توسط ادمین — خاکستری + هشدار + «تغییر» */
+.card-inactive{ filter:grayscale(0.85); opacity:0.75; border-right:3px solid var(--text-muted); }
+.card-inactive:hover{ filter:none; opacity:1; }
+.card-inactive-notice{ display:flex; align-items:center; gap:3px; font-size:0.6rem; font-weight:700; color:var(--error); line-height:1.35; }
+.card-inactive-notice .material-icons-round{ font-size:0.7rem; }
+.card-change-link{ display:inline-flex; align-items:center; gap:2px; font-size:0.6rem; font-weight:800; color:var(--brand-light); background:rgba(38,198,218,0.12); border:1px solid rgba(38,198,218,0.35); border-radius:20px; padding:0.05rem 0.45rem; cursor:pointer; font-family:inherit; }
+/* هایلایت کوتاهِ خانه‌ای که درسِ تازه در «زمان ثبت‌شدهٔ خودش» قرار گرفت */
+@keyframes cell-place-flash{ 0%{ background:rgba(38,198,218,0.30); } 100%{ background:transparent; } }
+.schedule-cell.cell-place-flash{ animation:cell-place-flash 2.4s ease-out; }
+.cell-empty-slot{ cursor:pointer; align-items:center; justify-content:center; gap:2px; transition:all 0.2s; border:1.5px dashed var(--glass-border-strong); background:rgba(255,255,255,0.02); }
+.cell-empty-slot:hover{ background:rgba(38,198,218,0.06); border-color:var(--brand-light); border-style:solid; transform:scale(1.02); }
+.cell-add-icon{ font-size:0.85rem !important; opacity:0.3; color:var(--text-secondary); }
+.cell-add-label{ font-size:0.56rem; opacity:0.35; color:var(--text-secondary); font-weight:500; }
+.reserve-cell{ cursor:default; padding:0.3rem; overflow:auto; }
+.cell-loading{ font-size:0.72rem; color:var(--text-muted); }
+.room-pill{
+    display:inline-block; background:linear-gradient(135deg, var(--brand-light), var(--brand));
+    color:#03161A; padding:0.14rem 0.5rem; border-radius:20px; font-size:0.72rem; font-weight:600;
+    margin:2px; cursor:pointer; border:none; font-family:inherit;
+    transition:transform 0.15s, box-shadow 0.15s;
+}
+.room-pill:hover{ transform:scale(1.07); box-shadow:0 3px 10px rgba(38,198,218,0.45); }
+.cell-reserved-text{ font-size:0.7rem; color:var(--error); opacity:0.85; text-align:center; display:block; padding-top:0.3rem; }
+.cell-empty-text{ font-size:0.7rem; color:var(--text-muted); text-align:center; display:block; padding-top:0.3rem; }
+.legend-row{ display:flex; gap:0.6rem 1.25rem; margin-top:0.45rem; flex-wrap:wrap; flex-shrink:0; }
+.legend-item{ display:flex; align-items:center; gap:0.35rem; font-size:0.76rem; color:var(--text-secondary); }
+.legend-dot{ width:10px; height:10px; border-radius:50%; }
+.legend-dot.available{ background:var(--brand-light); }
+.legend-dot.reserved{ background:var(--error); }
+.legend-dot.empty-slot{ background:var(--glass-border-strong); }
+
+/* ---------- Cancelled Cards ---------- */
+.cancelled-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:0.75rem; align-content:start; flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; padding-left:0.15rem; }
+#cancelled-classes .section-card{ overflow:hidden; }
+.cancelled-card{
+    border:1px solid var(--glass-border); border-right:4px solid var(--error);
+    border-radius:var(--radius-md); padding:0.75rem;
+    background:rgba(255,92,114,0.06); transition:box-shadow 0.2s, transform 0.25s var(--ease);
+}
+.cancelled-card:hover{ box-shadow:var(--shadow-glass); transform:translateY(-3px); }
+.cancelled-card-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; margin-bottom:0.5rem; }
+.cancelled-course-info{ display:flex; flex-direction:column; gap:0.25rem; }
+.cancelled-course-name{ font-weight:700; font-size:1rem; color:var(--text-primary); }
+.cancelled-course-name.cancelled-all-classes{ color:var(--error); font-style:italic; }
+.cancelled-professor{ display:flex; align-items:center; gap:0.25rem; font-size:0.85rem; color:var(--text-secondary); }
+.cancelled-timeslot{ display:flex; align-items:center; gap:0.25rem; font-size:0.8rem; color:var(--brand-light); font-weight:600; }
+.cancelled-date-badge{ display:flex; align-items:center; gap:0.3rem; font-size:0.8rem; color:var(--error); background:rgba(255,92,114,0.1); padding:0.25rem 0.65rem; border-radius:20px; white-space:nowrap; flex-shrink:0; flex-wrap:wrap; }
+.cancelled-all-notice{ display:flex; align-items:center; gap:0.35rem; font-size:0.82rem; color:var(--error); background:rgba(255,92,114,0.08); border-radius:6px; padding:0.4rem 0.65rem; margin-bottom:0.5rem; }
+.cancelled-desc{ display:flex; align-items:center; gap:0.3rem; font-size:0.83rem; color:var(--text-secondary); border-top:1px dashed var(--glass-border); padding-top:0.5rem; margin-top:0.5rem; }
+.empty-state-full{ text-align:center; padding:2rem 1rem; color:var(--text-secondary); }
+.empty-state-full .material-icons-round{ font-size:3rem; color:var(--success); margin-bottom:0.6rem; display:block; }
+.empty-state-full h3{ margin-bottom:0.4rem; color:var(--text-primary); }
+
+/* ---------- کاتالوگ دروس: مجموع واحدها، جست‌وجو، جزئیات ---------- */
+.units-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem; flex-shrink:0;
+}
+.total-units{
+    display:inline-flex; align-items:center; gap:0.35rem;
+    background:var(--glass-bg-strong); border:1px solid var(--glass-border);
+    border-radius:var(--radius-pill); padding:0.35rem 0.9rem;
+    font-size:0.85rem; font-weight:800; color:var(--brand-light);
+}
+.total-units .material-icons-round{ font-size:1.05rem; }
+.catalog-hint{ font-size:0.7rem; color:var(--text-secondary); opacity:0.85; }
+
+/* فرم افزودن درس از کاتالوگ */
+.catalog-search-wrap{ position:relative; }
+.catalog-suggestions{
+    list-style:none; margin:0.35rem 0 0; padding:0; max-height:260px;
+    overflow-y:auto; border:1px solid var(--glass-border);
+    border-radius:var(--radius-md); background:var(--bg-2);
+    scrollbar-width:thin;
+}
+.catalog-suggestions:empty{ display:none; }
+.catalog-suggestion{
+    padding:0.5rem 0.65rem; cursor:pointer; border-bottom:1px solid var(--glass-border);
+    display:flex; flex-direction:column; gap:2px;
+}
+.catalog-suggestion:last-child{ border-bottom:none; }
+.catalog-suggestion.active, .catalog-suggestion:hover{ background:rgba(38,198,218,0.10); }
+.catalog-suggestion.disabled{ opacity:0.55; cursor:not-allowed; }
+.sugg-title{ display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; font-size:0.82rem; font-weight:800; color:var(--text-primary); overflow-wrap:anywhere; }
+.sugg-chip{ font-size:0.6rem; font-weight:700; padding:0.05rem 0.45rem; border-radius:20px; background:rgba(38,198,218,0.16); color:var(--brand-light); white-space:nowrap; }
+.sugg-chip.muted{ background:var(--glass-bg-strong); color:var(--text-secondary); }
+.sugg-chip.added{ background:rgba(255,92,114,0.16); color:var(--error); }
+.sugg-line{ font-size:0.68rem; color:var(--text-secondary); overflow-wrap:anywhere; }
+.catalog-preview{
+    margin-top:0.6rem; border:1px solid var(--glass-border);
+    border-radius:var(--radius-md); background:var(--glass-bg-strong);
+    padding:0.6rem 0.7rem; display:none; flex-direction:column; gap:0.25rem;
+}
+.catalog-preview.open{ display:flex; }
+.preview-title{ font-size:0.9rem; font-weight:800; color:var(--text-primary); overflow-wrap:anywhere; }
+.preview-line{ font-size:0.72rem; color:var(--text-secondary); display:flex; align-items:flex-start; gap:0.3rem; overflow-wrap:anywhere; }
+.preview-line .material-icons-round{ font-size:0.85rem; color:var(--brand-light); flex-shrink:0; }
+.preview-meetings{ margin:0.2rem 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:0.15rem; }
+.preview-meetings li{ font-size:0.72rem; color:var(--text-primary); display:flex; align-items:center; gap:0.3rem; overflow-wrap:anywhere; }
+.preview-meetings .material-icons-round{ font-size:0.8rem; color:var(--brand-light); }
+.preview-actions{ display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.45rem; }
+.catalog-none-btn{ margin-top:0.6rem; width:100%; }
+.manual-fields{ display:none; margin-top:0.6rem; border-top:1px dashed var(--glass-border); padding-top:0.6rem; }
+.manual-fields.open{ display:block; }
+.catalog-warning-box{
+    display:none; margin-top:0.5rem; border:1px solid rgba(255,92,114,0.45);
+    background:rgba(255,92,114,0.08); border-radius:var(--radius-md);
+    padding:0.5rem 0.65rem; font-size:0.74rem; color:var(--text-primary);
+}
+.catalog-warning-box.open{ display:block; }
+.catalog-warning-box ul{ margin:0.25rem 0 0; padding-right:1.1rem; }
+
+/* مودال جزئیات درس کاتالوگی */
+.detail-grid{ display:flex; flex-direction:column; gap:0.3rem; margin-bottom:0.6rem; }
+.detail-row{ display:flex; align-items:flex-start; gap:0.4rem; font-size:0.8rem; overflow-wrap:anywhere; }
+.detail-row .material-icons-round{ font-size:1rem; color:var(--brand-light); flex-shrink:0; }
+.detail-row b{ color:var(--text-secondary); font-weight:700; min-width:74px; }
+.detail-meetings{ list-style:none; margin:0.3rem 0 0; padding:0; display:flex; flex-direction:column; gap:0.2rem; }
+.detail-meetings li{ display:flex; align-items:center; gap:0.35rem; font-size:0.78rem; overflow-wrap:anywhere; }
+.detail-meetings .material-icons-round{ font-size:0.9rem; color:var(--brand-light); }
+.detail-actions{ display:flex; gap:0.45rem; flex-wrap:wrap; margin-top:0.8rem; }
+.detail-group-list{ display:flex; flex-direction:column; gap:0.35rem; margin-top:0.4rem; }
+.detail-group{
+    display:flex; align-items:center; justify-content:space-between; gap:0.5rem;
+    border:1px solid var(--glass-border); border-radius:var(--radius-md);
+    background:var(--glass-bg-strong); padding:0.45rem 0.6rem;
+}
+.detail-group-info{ display:flex; flex-direction:column; gap:0.1rem; font-size:0.74rem; color:var(--text-secondary); overflow-wrap:anywhere; }
+.detail-group-info strong{ font-size:0.82rem; color:var(--text-primary); }
+
+/* ---------- Modals ---------- */
+.modal-overlay{ display:none; position:fixed; inset:0; background:rgba(2,4,10,0.7); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:1rem; }
+.modal-overlay.open{ display:flex; animation:dashFadeIn 0.2s ease; }
+.modal-card{
+    background:var(--modal-bg); border:1px solid var(--modal-border);
+    backdrop-filter:blur(24px) saturate(150%); -webkit-backdrop-filter:blur(24px) saturate(150%);
+    border-radius:var(--radius-lg); padding:1.6rem; width:100%; max-width:440px;
+    box-shadow:var(--shadow-lg); max-height:90vh; overflow-y:auto;
+}
+.modal-wide{ max-width:600px; }
+.modal-card-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; }
+.modal-card-header h3{ font-size:1.15rem; color:var(--text-primary); margin:0; }
+.modal-close-btn{ background:none; border:none; cursor:pointer; color:var(--text-secondary); padding:0.25rem; border-radius:50%; display:flex; align-items:center; transition:background 0.2s, color 0.2s; }
+.modal-close-btn:hover{ background:var(--glass-bg-strong); color:var(--text-primary); }
+
+.form-group{ margin-bottom:1.1rem; }
+.form-label{ display:flex; align-items:center; gap:0.3rem; font-size:0.88rem; font-weight:600; color:var(--text-primary); margin-bottom:0.5rem; }
+.form-label-icon{ font-size:1rem; color:var(--brand-light); }
+.form-control{
+    width:100%; background:var(--input-bg); border:1px solid var(--glass-border-strong);
+    border-radius:var(--radius-sm); padding:0.7rem 0.95rem; color:var(--text-primary);
+    font-family:'Vazirmatn', sans-serif; font-size:0.92rem; transition:border-color 0.2s, box-shadow 0.2s;
+}
+.form-control:focus{ outline:none; border-color:var(--brand-light); box-shadow:0 0 0 3px rgba(38,198,218,0.15); background:var(--glass-bg-strong); }
+textarea.form-control{ resize:vertical; }
+
+.week-type-selector{ display:flex; gap:0.5rem; flex-wrap:wrap; }
+.week-type-option{ cursor:pointer; }
+.week-type-option input[type="radio"]{ display:none; }
+.week-type-label{ display:block; padding:0.5rem 1rem; border-radius:var(--radius-sm); border:2px solid var(--glass-border-strong); font-size:0.88rem; color:var(--text-secondary); transition:all 0.2s; cursor:pointer; }
+.week-type-option input:checked + .week-type-label.all{ border-color:var(--brand-light); background:rgba(38,198,218,0.15); color:var(--brand-light); font-weight:700; }
+.week-type-option input:checked + .week-type-label.odd{ border-color:#42A5F5; background:rgba(33,150,243,0.15); color:#90CAF9; font-weight:700; }
+.week-type-option input:checked + .week-type-label.even{ border-color:#66BB6A; background:rgba(76,175,80,0.15); color:#A5D6A7; font-weight:700; }
+
+.reserve-slot-info-card{ background:rgba(38,198,218,0.08); border:1px solid rgba(38,198,218,0.2); border-radius:var(--radius-sm); padding:0.85rem 1rem; margin-bottom:1.25rem; display:flex; gap:1rem; flex-wrap:wrap; }
+.slot-info-row{ display:flex; align-items:center; gap:0.4rem; font-size:0.9rem; font-weight:600; color:var(--brand-light); }
+.slot-info-row .material-icons-round{ font-size:1.1rem; }
+
+.modal-actions{ display:flex; gap:0.6rem; margin-top:1.25rem; flex-wrap:wrap; }
+
+.excel-guide{ background:var(--glass-bg-strong); border-radius:var(--radius-sm); padding:0.85rem 1rem; margin-bottom:1.1rem; font-size:0.88rem; color:var(--text-secondary); display:flex; flex-direction:column; gap:0.4rem; }
+.guide-title{ display:flex; align-items:center; gap:0.3rem; font-weight:600; color:var(--text-primary); font-size:0.9rem; }
+.guide-hint{ color:var(--brand-light); font-weight:500; }
+.excel-guide code{ background:rgba(255,255,255,0.1); padding:0.1rem 0.35rem; border-radius:4px; font-size:0.85em; }
+.excel-paste-area{ font-family:'Courier New', monospace; font-size:0.85rem; direction:ltr; text-align:left; }
+.paste-preview{ background:var(--glass-bg-strong); border-radius:var(--radius-sm); padding:1rem; margin-bottom:1rem; }
+.paste-preview h4{ display:flex; align-items:center; gap:0.4rem; font-size:0.95rem; margin-bottom:0.75rem; color:var(--brand-light); }
+.preview-table{ width:100%; font-size:0.8rem; border-collapse:collapse; overflow-x:auto; display:block; }
+.preview-table th, .preview-table td{ padding:0.35rem 0.6rem; border:1px solid var(--glass-border); text-align:right; color:var(--text-primary); }
+.preview-table th{ background:var(--brand); color:#fff; font-weight:600; }
+.preview-table tr:nth-child(even) td{ background:rgba(255,255,255,0.03); }
+
+.alert-banner-success{ display:flex; align-items:center; gap:0.6rem; background:rgba(46,204,113,0.1); border:1px solid rgba(46,204,113,0.3); border-right:4px solid var(--success); border-radius:var(--radius-sm); padding:0.85rem 1.25rem; margin-bottom:1rem; color:var(--success); font-weight:600; animation:dashFadeIn 0.3s ease; }
+
+/* =====================================================
+   Fit-to-viewport density tweaks
+   ===================================================== */
+
+/* نمایش‌های کوتاه (مثلاً 1366×768): فشرده‌سازی بیشتر برای جا شدن در یک اسکرین */
+@media (max-height:820px) and (min-width:961px){
+    .section-hint{ display:none; }
+    .datetime-widget{ padding:0.55rem 0.8rem; }
+    .datetime-icon-area{ width:36px; height:36px; }
+    .datetime-main-icon{ font-size:1.3rem; }
+    .datetime-weekday{ font-size:1.1rem; }
+    .datetime-clock{ font-size:1.15rem; }
+    .notif-list{ max-height:96px; }
+    .dash-tab{ padding:0.35rem 0.7rem; font-size:0.8rem; }
+    .section-card-title h2{ font-size:0.95rem; }
+    .schedule-grid{ grid-template-rows:auto repeat(6, minmax(34px, auto)); }
+    .schedule-cell{ min-height:34px; }
+}
+
+/* زیر 961px چیدمان عادی و اسکرول صفحه برمی‌گردد (موبایل/تبلت) */
+@media (max-width:960px){
+    .dashboard-container{ flex:none; height:auto; overflow:visible; gap:0.75rem; }
+    .notifications-widget{ min-height:0; }
+}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tehran-time.js') }}"></script>
+<script>
+/* =====================================================
+   ساعت و تاریخ زندهٔ داشبورد (Task 2)
+   منبع زمان: /api/now → offset سرور؛ نمایش با Asia/Tehran.
+   روز دقیقاً ساعت ۰۰:۰۰ تهران عوض می‌شود؛ بدون اتکا به
+   timezone یا خطای ساعتِ دستگاه. خطاها غیر bloک‌کننده‌اند.
+   ===================================================== */
+(function () {
+    const RESYNC_MS = 7 * 60 * 1000;   // همگام‌سازی مجدد هر ۷ دقیقه (بازهٔ ۵–۱۰)
+    const clockEl = document.getElementById('live-clock');
+    const weekdayEl = document.getElementById('dt-weekday');
+    const dateEl = document.getElementById('dt-date');
+    let midnightTimer = null;
+    let dateKey = '';
+
+    function render() {
+        const d = TehranTime.now();
+        const clock = TehranTime.formatClock(d);
+        if (clock && clockEl) clockEl.textContent = clock;
+        const key = TehranTime.formatDate(d);
+        if (key && key !== dateKey) {          // فقط وقتی روز/تاریخ عوض شد
+            dateKey = key;
+            if (dateEl) dateEl.textContent = key;
+            if (weekdayEl) {
+                const wd = TehranTime.formatWeekday(d);
+                if (wd) weekdayEl.textContent = wd;
+            }
+        }
+    }
+
+    function scheduleMidnight() {
+        if (midnightTimer) clearTimeout(midnightTimer);
+        const ms = TehranTime.msUntilTehranMidnight(TehranTime.now());
+        if (ms === null) return;
+        midnightTimer = setTimeout(function () {     // عوض شدن روز در ۰۰:۰۰ تهران
+            render();
+            scheduleMidnight();
+        }, ms + 60);
+    }
+
+    function resync() {
+        TehranTime.sync('/api/now').then(render).catch(function () {
+            render();   // شکست sync → با offset قبلی (یا ساعت محلی) ادامه می‌دهیم
+        });
+    }
+
+    render();                 // فوری و غیر bloک‌کننده (پیش از sync: ساعت محلی)
+    scheduleMidnight();
+    resync();
+    setInterval(render, 1000);
+    setInterval(resync, RESYNC_MS);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) resync();   // برگشت به تب → همگام‌سازی تازه
+    });
+})();
+
+const cancelledClassIds = {{ all_cancelled_classes | map(attribute='id') | list | tojson if all_cancelled_classes else '[]' }};
+
+function markAllCancelledAsViewed() {
+    if (!cancelledClassIds || cancelledClassIds.length === 0) return;
+    csrfFetch('/api/cancelled_classes/mark_viewed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: cancelledClassIds })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const badge = document.getElementById('cancelled-badge');
+            if (badge) {
+                badge.classList.add('hiding');
+                setTimeout(() => { badge.style.display = 'none'; }, 320);
+            }
+        }
+    })
+    .catch(() => {});
+}
+
+function openTab(id, btn) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.dash-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if (btn) btn.classList.add('active');
+    if (id === 'reserve-room') loadAvailableSlots();
+    if (id === 'cancelled-classes') markAllCancelledAsViewed();
+}
+
+function gregorianToJalali(gy, gm, gd) {
+    var g_d_no, j_d_no;
+    var j_np, i;
+    var g_days_in_month = [31,28,31,30,31,30,31,31,30,31,30,31];
+    var j_days_in_month = [31,31,31,31,31,31,30,30,30,30,30,29];
+    gy -= 1600; gm -= 1; gd -= 1;
+    g_d_no = 365*gy + Math.floor((gy+3)/4) - Math.floor((gy+99)/100) + Math.floor((gy+399)/400);
+    for (i=0; i<gm; i++) g_d_no += g_days_in_month[i];
+    if (gm > 1 && ((gy%4===0 && gy%100!==0) || (gy%400===0))) g_d_no++;
+    g_d_no += gd;
+    j_d_no = g_d_no - 79;
+    j_np = Math.floor(j_d_no/12053); j_d_no %= 12053;
+    var jy = 979 + 33*j_np + 4*Math.floor(j_d_no/1461);
+    j_d_no %= 1461;
+    if (j_d_no >= 366) { jy += Math.floor((j_d_no-1)/365); j_d_no = (j_d_no-1)%365; }
+    for (i=0; i<11 && j_d_no >= j_days_in_month[i]; i++) j_d_no -= j_days_in_month[i];
+    var jm = i+1; var jd = j_d_no+1;
+    return [jy, jm, jd];
+}
+
+function convertAllDatesToJalali() {
+    document.querySelectorAll('.jalali-date[data-gregorian]').forEach(function(el) {
+        var gDate = el.getAttribute('data-gregorian');
+        if (!gDate) return;
+        var parts = gDate.split('-');
+        if (parts.length !== 3) return;
+        try {
+            var j = gregorianToJalali(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
+            var jStr = j[0] + '/' + String(j[1]).padStart(2, '0') + '/' + String(j[2]).padStart(2, '0');
+            el.textContent = jStr;
+        } catch(e) {}
+    });
+}
+
+const dayMap = {
+    'saturday':'شنبه', 'sunday':'یکشنبه', 'monday':'دوشنبه',
+    'tuesday':'سه‌شنبه', 'wednesday':'چهارشنبه'
+};
+
+function formatScheduleTime(timeSlot) {
+    return String(timeSlot || '').split('-').map(part => {
+        const number = String(Number(part)).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[digit]);
+        return number;
+    }).join(' تا ');
+}
+
+let mySchedules = {{ schedules | tojson if schedules else '[]' }};
+let totalUnits = {{ (total_units if total_units is not none else 0) | tojson }};
+
+/* ── وضعیت نمای برنامه + تنظیم اول ترم (Task 1) ── */
+let scheduleView = 'all';           // 'all' | 'week' | 'odd' | 'even'
+let semesterStartInfo = null;       // {jalali, gregorian, weekday_index} | null
+
+/* ثابت‌های روز/اسلات از سرور می‌آیند — تنها منبع حقیقت (اشتراک با پنل ادمین) */
+const SCHEDULE_DAYS = {{ schedule_grid_days | tojson }};
+const _SCHEDULE_DAY_NAMES_FA = {{ schedule_all_day_names_fa | tojson }};
+const SCHEDULE_DAY_NAMES = SCHEDULE_DAYS.map(d => _SCHEDULE_DAY_NAMES_FA[d] || d);
+const SCHEDULE_TIMES = {{ schedule_slots | tojson }};
+
+function currentWeekParity() {
+    /* هفتهٔ جاری نسبت به اول ترم: هفتهٔ اول «فرد»، هفتهٔ دوم «زوج»، ...
+       تاریخ‌ها فقط با اختلاف روز میلادی ISO حساب می‌شوند — بدون محاسبهٔ جلالی. */
+    if (!semesterStartInfo || !semesterStartInfo.gregorian ||
+            typeof TehranTime === 'undefined') return null;
+    try {
+        const toUtc = iso => Date.UTC(+iso.slice(0,4), +iso.slice(5,7) - 1, +iso.slice(8,10));
+        const todayIso = TehranTime.gregorianIso(TehranTime.now());
+        if (!todayIso) return null;
+        const diffDays = Math.floor((toUtc(todayIso) - toUtc(semesterStartInfo.gregorian)) / 86400000);
+        if (diffDays < 0) return null;          // هنوز به اول ترم نرسیده‌ایم
+        return (Math.floor(diffDays / 7) % 2 === 0) ? 'odd' : 'even';
+    } catch (e) { return null; }
+}
+
+function filterItemsByView(items) {
+    if (scheduleView === 'all') return items;
+    const target = scheduleView === 'week' ? currentWeekParity() : scheduleView;
+    if (!target) return items;
+    return items.filter(it => (it.week_type || 'all') === 'all' || it.week_type === target);
+}
+
+function renderSchedule() {
+    document.querySelectorAll('#schedule-table .schedule-cell').forEach(cell => {
+        cell.innerHTML = '';
+        cell.classList.remove('has-class', 'has-conflict');
+    });
+    const grouped = {};
+    mySchedules.forEach(item => {
+        const key = `${item.day}__${item.time_slot}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(item);
+    });
+    document.querySelectorAll('#schedule-table .schedule-cell').forEach(cell => {
+        const key = `${cell.dataset.day}__${cell.dataset.time}`;
+        const full = grouped[key] || [];
+        const shown = filterItemsByView(full);
+        if (getScheduleConflict(full)) cell.classList.add('has-conflict');
+        if (shown.length) cell.classList.add('has-class');
+        cell.innerHTML = buildCellHTML(shown, full);
+    });
+    updateWeekParityChip();
+    renderAgenda();
+}
+
+/* ── دسترسی یکسان به فیلدها (شخصی + کاتالوگی — سرور هر دو نام را می‌فرستد) ── */
+function itemName(item) {
+    return String(item.name != null ? item.name : (item.course_name || '')).trim();
+}
+function itemTeacher(item) {
+    return String(item.teacher != null ? item.teacher : (item.professor_name || '')).trim();
+}
+function itemRoom(item) {
+    return String(item.room != null ? item.room : (item.class_location || '')).trim();
+}
+function formatClockTime(hhmm) {
+    /* '10:00' → '۱۰' و '10:30' → '۱۰:۳۰' (برای ساعت دقیق روی کارت) */
+    const p = String(hhmm || '').split(':');
+    if (p.length !== 2) return String(hhmm || '');
+    const toFa = s => String(s).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    return toFa(String(parseInt(p[0], 10))) + (p[1] === '00' ? '' : toFa(':' + p[1]));
+}
+function faUnitsText(u) {
+    const n = Number(u);
+    if (!isFinite(n)) return String(u);
+    const s = (Math.round(n * 10) / 10) % 1 === 0 ? String(Math.round(n)) : String(n);
+    return s.replace('.', '٫').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+
+function getScheduleItemMeta(item) {
+    const teacher = itemTeacher(item);
+    const professor = teacher ? `استاد ${teacher}` : '';
+    const location = itemRoom(item);
+    return [professor, location].filter(Boolean).join(' · ');
+}
+
+function getWeekLabel(weekType) {
+    if (weekType === 'odd') return 'هفته فرد';
+    if (weekType === 'even') return 'هفته زوج';
+    return 'هر هفته';
+}
+
+function getWeekIcon(weekType) {
+    if (weekType === 'odd') return 'filter_1';
+    if (weekType === 'even') return 'filter_2';
+    return 'all_inclusive';
+}
+
+function buildScheduleClassCard(item, opts) {
+    /* آناتومی یکسانِ کارت (PART A): ردیف چیپ‌ها ← نام (۳ خط) ← استاد ← مکان
+       ← ساعت دقیق (اگر با اسلات فرق دارد) ← هشدار حذف نرم. بدون هیچ
+       ارتفاع ثابت — سلول تا جایی که کارت لازم دارد رشد می‌کند. */
+    const o = opts || {};
+    const safeType = item.week_type || 'all';
+    const parityClass = safeType !== 'all' ? ` card-parity bg-${safeType}` : '';
+    /* در نمای «همه»، کارتِ هفتهٔ غیرفعال کم‌رنگ است */
+    const parityNow = currentWeekParity();
+    const dimClass = (scheduleView === 'all' && safeType !== 'all' &&
+                      parityNow && parityNow !== safeType) ? ' card-dim' : '';
+    const inactiveClass = item.is_active === false ? ' card-inactive' : '';
+    const weekClass = `week-${safeType}`;
+    const label = getWeekLabel(safeType);
+    const icon = getWeekIcon(safeType);
+    const teacher = itemTeacher(item);
+    const room = itemRoom(item);
+    const name = escapeHtml(itemName(item) || 'کلاس بدون نام');
+
+    /* ردیف چیپ‌ها — می‌تواند چند خط شود؛ هرگز روی عنوان نمی‌افتد */
+    let chips = `<span class="week-marker ${weekClass}"><span class="material-icons-round">${icon}</span>${label.replace('هفته ', '')}</span>`;
+    if (item.kind === 'catalog' && item.group) {
+        chips += `<span class="week-marker group-chip" title="کد درسی ${escapeHtml(String(item.code || ''))}">گروه ${escapeHtml(String(item.group))}</span>`;
+    }
+    if (o.conflict) {
+        chips += `<span class="cell-conflict-badge" title="${escapeHtml(o.conflict)}">تداخل</span>`;
+    }
+
+    /* استاد و مکان — هر کدام خط خود با آیکون؛ کنار هم می‌نشینند اگر جا شوند */
+    let meta = '<span class="card-meta">';
+    if (teacher) {
+        meta += `<span class="meta-line"><span class="material-icons-round">person</span><span class="meta-text">${escapeHtml(teacher)}</span></span>`;
+    }
+    if (room) {
+        meta += `<span class="meta-line"><span class="material-icons-round">pin_drop</span><span class="meta-text">${escapeHtml(room)}</span></span>`;
+    }
+    meta += '</span>';
+
+    /* ساعت دقیق فقط وقتی با برچسب اسلاتِ شبکه فرق دارد */
+    let exact = '';
+    if (item.exact_time && item.start && item.end) {
+        exact = `<span class="card-exact-time"><span class="material-icons-round">schedule</span>${escapeHtml(formatClockTime(item.start))} تا ${escapeHtml(formatClockTime(item.end))}</span>`;
+    }
+
+    /* گروهِ حذف‌شدهٔ نرم توسط ادمین */
+    let notice = '';
+    if (item.is_active === false) {
+        notice = `<span class="card-inactive-notice"><span class="material-icons-round">error_outline</span>این گروه توسط ادمین حذف شد، لطفاً گروه جدید انتخاب کنید</span>` +
+            `<button type="button" class="card-change-link" ` +
+            `onclick="event.stopPropagation(); openCatalogDetails(${Number(item.enrollment_id) || 0})">` +
+            `<span class="material-icons-round">swap_horiz</span>تغییر</button>`;
+    }
+
+    /* کلیک: کاتالوگی ← جزئیات؛ شخصی ← ویرایش */
+    const click = item.kind === 'catalog'
+        ? `event.stopPropagation(); openCatalogDetails(${Number(item.enrollment_id) || 0})`
+        : `event.stopPropagation(); openEditModal(this.closest('.schedule-cell'), ${safeType === 'all' ? 'null' : `'${safeType}'`}, ${Number(item.id) || 0})`;
+    const fullText = [
+        itemName(item),
+        teacher ? 'استاد ' + teacher : '',
+        room,
+        item.code ? 'کد ' + item.code : '',
+        item.group ? 'گروه ' + item.group : '',
+        item.units != null ? 'واحد ' + faUnitsText(item.units) : '',
+        (item.exact_time && item.start && item.end)
+            ? `${formatClockTime(item.start)} تا ${formatClockTime(item.end)}` : ''
+    ].filter(Boolean).join(' — ');
+    return `<button type="button" class="cell-class-all${parityClass}${dimClass}${inactiveClass} ${weekClass}"
+        title="${escapeHtml(fullText)}"
+        aria-label="جزئیات ${escapeHtml(itemName(item))} — ${escapeHtml(label)}"
+        onclick="${click}">
+        <span class="card-chips">${chips}</span>
+        <span class="cell-name">${name}</span>
+        ${meta}
+        ${exact}
+        ${notice}
+    </button>`;
+}
+
+function getScheduleConflict(fullItems) {
+    /* «تداخل»: هر هفته + فرد/زوج در یک خانه، یا رکورد تکراریِ همان نوع هفته
+       (فقط از مسیر وارد کردن جدول/انبوه قابل ساختن است — مسیر تکی پاک می‌کند) */
+    const types = fullItems.map(i => i.week_type || 'all');
+    if (types.includes('all') && (types.includes('odd') || types.includes('even'))) {
+        return 'تداخل: هر هفته با فرد/زوج هم‌پوشانی دارد';
+    }
+    const seen = {};
+    for (const t of types) {
+        seen[t] = (seen[t] || 0) + 1;
+        if (seen[t] > 1) return 'تداخل: رکورد تکراری «' + getWeekLabel(t) + '»';
+    }
+    return null;
+}
+
+function buildCellHTML(items, fullItems) {
+    /* هر آیتم یک کارت «تمام‌قد» است (فرد+زوج ← دو کارت؛ ۳+ ← پشتهٔ کارت‌ها)
+       — سلول رشد می‌کند، هیچ چیز بریده نمی‌شود (PART A #3) */
+    const full = fullItems || items;
+    const conflict = getScheduleConflict(full);
+    if (items.length === 0) {
+        return (conflict
+            ? `<span class="cell-conflict-badge cell-conflict-standalone" title="${escapeHtml(conflict)}">تداخل</span>`
+            : '') + `<span class="cell-empty-plus" aria-hidden="true">+</span>`;
+    }
+    /* چیپ «تداخل» فقط روی اولین کارت خانه — نه روی همه */
+    const cards = items.map((it, ix) =>
+        buildScheduleClassCard(it, { conflict: ix === 0 ? (conflict || '') : '' })).join('');
+    if (items.length === 1 && (items[0].week_type || 'all') !== 'all') {
+        /* فقط یک جفت: کارت تمام‌قد + نوار افزودنِ هفتهٔ مقابل */
+        const only = items[0];
+        const other = only.week_type === 'odd' ? 'even' : 'odd';
+        const otherLabel = other === 'even' ? 'زوج' : 'فرد';
+        return `<div class="cell-class-stack">` + cards +
+            `<button type="button" class="cell-add-strip"
+                aria-label="افزودن کلاس هفته ${otherLabel}"
+                onclick="event.stopPropagation(); openEditModalForWeek(this.closest('.schedule-cell'), '${other}')">
+                <span class="material-icons-round">add</span> هفته ${otherLabel}</button>` +
+            `</div>`;
+    }
+    if (items.length === 1) return cards;
+    return `<div class="cell-class-stack">${cards}</div>`;
+}
+
+function renderAgenda() {
+    /* نمای روزبه‌روز برای موبایل — همان فیلترِ نمای فعال */
+    const wrap = document.getElementById('schedule-agenda');
+    if (!wrap) return;
+    let html = '';
+    SCHEDULE_DAYS.forEach((day, di) => {
+        const dayItems = mySchedules.filter(s => s.day === day);
+        const shown = filterItemsByView(dayItems).slice().sort(
+            (a, b) => SCHEDULE_TIMES.indexOf(a.time_slot) - SCHEDULE_TIMES.indexOf(b.time_slot));
+        html += `<div class="agenda-day"><h4>${SCHEDULE_DAY_NAMES[di]}</h4>`;
+        if (shown.length === 0) {
+            html += `<p class="agenda-empty">بدون کلاس</p>`;
+        } else {
+            shown.forEach(s => {
+                const wt = s.week_type || 'all';
+                /* آژندا هم استاد و مکان را کامل نشان می‌دهد (بدون برش تک‌خطی) */
+                const metaParts = [];
+                const teacherT = itemTeacher(s);
+                if (teacherT) metaParts.push('استاد ' + teacherT);
+                const roomT = itemRoom(s);
+                if (roomT) metaParts.push(roomT);
+                if (s.exact_time && s.start && s.end) {
+                    metaParts.push(`${formatClockTime(s.start)} تا ${formatClockTime(s.end)}`);
+                }
+                if (s.is_active === false) metaParts.push('حذف‌شده — گروه جدید انتخاب کنید');
+                const click = s.kind === 'catalog'
+                    ? `openCatalogDetails(${Number(s.enrollment_id) || 0})`
+                    : `openScheduleModal('${day}', '${s.time_slot}', '${wt}', ${Number(s.id) || 0})`;
+                html += `<button type="button" class="agenda-row"
+                    aria-label="${s.kind === 'catalog' ? 'جزئیات' : 'ویرایش'} ${escapeHtml(itemName(s) || 'کلاس')} — ${SCHEDULE_DAY_NAMES[di]}"
+                    onclick="${click}">
+                    <span class="agenda-time">${formatScheduleTime(s.time_slot)}</span>
+                    <span class="agenda-main">
+                        <span class="agenda-course">${escapeHtml(itemName(s))}</span>
+                        ${metaParts.length ? `<span class="agenda-meta">${escapeHtml(metaParts.join(' · '))}</span>` : ''}
+                    </span>
+                    ${s.kind === 'catalog' && s.group ? `<span class="week-marker group-chip">گروه ${escapeHtml(String(s.group))}</span>` : ''}
+                    <span class="week-marker week-${wt}"><span class="material-icons-round">${getWeekIcon(wt)}</span>${getWeekLabel(wt).replace('هفته ', '')}</span>
+                </button>`;
+            });
+        }
+        html += `</div>`;
+    });
+    wrap.innerHTML = html;
+}
+
+function setScheduleView(view, btn) {
+    scheduleView = view;
+    document.querySelectorAll('.schedule-view-switch .view-btn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+    });
+    renderSchedule();
+}
+
+function updateWeekParityChip() {
+    const chip = document.getElementById('current-week-parity');
+    const weekBtn = document.getElementById('view-week-btn');
+    if (!chip) return;
+    const parity = currentWeekParity();
+    if (parity && semesterStartInfo) {
+        chip.hidden = false;
+        chip.className = `week-marker week-${parity} week-parity-chip`;
+        chip.innerHTML = `<span class="material-icons-round">${getWeekIcon(parity)}</span>این هفته: ${parity === 'odd' ? 'فرد' : 'زوج'}`;
+    } else {
+        chip.hidden = true;
+    }
+    if (weekBtn) weekBtn.hidden = !parity;
+}
+
+async function loadSemesterStart() {
+    try {
+        const res = await csrfFetch('/api/schedule_settings');
+        if (!res.ok) return;
+        const data = await res.json();
+        semesterStartInfo = data.semester_start || null;
+        const input = document.getElementById('semester-start-input');
+        if (input) input.value = semesterStartInfo ? semesterStartInfo.jalali : '';
+        const clearBtn = document.getElementById('semester-clear-btn');
+        if (clearBtn) clearBtn.hidden = !semesterStartInfo;
+        if (semesterStartInfo && scheduleView === 'week' && !currentWeekParity()) {
+            scheduleView = 'all';
+            document.querySelectorAll('.schedule-view-switch .view-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.view === 'all');
+            });
+        }
+        renderSchedule();
+    } catch (e) { /* غیر bloک‌کننده */ }
+}
+
+async function saveSemesterStart() {
+    const input = document.getElementById('semester-start-input');
+    const value = faToEnDigits(String(input ? input.value : '').trim()).replace(/[-.]/g, '/');
+    if (!/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(value)) {
+        alert('تاریخ اول ترم را به صورت شمسی وارد کنید (مثال: ۱۴۰۵/۰۷/۰۱)');
+        return;
+    }
+    try {
+        const res = await csrfFetch('/api/schedule_settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ semester_start: value })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) { alert(data.error || 'خطا در ذخیره‌سازی'); return; }
+        semesterStartInfo = data.semester_start;
+        const clearBtn = document.getElementById('semester-clear-btn');
+        if (clearBtn) clearBtn.hidden = false;
+        renderSchedule();
+    } catch (e) { alert('خطا در ارتباط با سرور'); }
+}
+
+async function clearSemesterStart() {
+    try {
+        const res = await csrfFetch('/api/schedule_settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ semester_start: null })
+        });
+        if (!res.ok) return;
+        semesterStartInfo = null;
+        const input = document.getElementById('semester-start-input');
+        if (input) input.value = '';
+        const clearBtn = document.getElementById('semester-clear-btn');
+        if (clearBtn) clearBtn.hidden = true;
+        if (scheduleView === 'week') {
+            scheduleView = 'all';
+            document.querySelectorAll('.schedule-view-switch .view-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.view === 'all');
+            });
+        }
+        renderSchedule();
+    } catch (e) { /* غیر bloک‌کننده */ }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderSchedule();
+    updateUnitsTotal();
+    convertAllDatesToJalali();
+    loadSemesterStart();
+    /* دسترسی با کیبورد: Enter/Space روی خانهٔ فوکوس‌شده معادل کلیک است */
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const cell = e.target && e.target.closest && e.target.closest('.schedule-cell');
+        if (cell && e.target === cell) {
+            e.preventDefault();
+            cellClicked(cell);
+        }
+    });
+    /* B7: تب دوباره دیده شد ← برنامه از سرور تازه می‌شود (بدون کش) */
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) refreshSchedule();
+    });
+    /* B7: رویداد اختصاصیِ user_<id> از سرور — اگر کلاینت سوکت داشت */
+    try {
+        if (typeof socket !== 'undefined' && socket && socket.on) {
+            socket.on('catalog_updated', function() { refreshSchedule(); });
+        } else if (typeof io === 'function') {
+            const dashSocket = io();
+            dashSocket.on('catalog_updated', function() { refreshSchedule(); });
+        }
+    } catch (e) { /* غیر bloک‌کننده */ }
+});
+
+/* ── هماهنگ‌سازی با سرور: لیست یکپارچه + مجموع واحدها (بدون reload) ── */
+async function refreshSchedule() {
+    try {
+        const res = await csrfFetch('/api/schedule/items');
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (!Array.isArray(data.items)) return false;
+        mySchedules.length = 0;
+        data.items.forEach(it => mySchedules.push(it));
+        totalUnits = Number(data.total_units) || 0;
+        renderSchedule();
+        updateUnitsTotal();
+        return true;
+    } catch (e) { return false; }
+}
+
+function updateUnitsTotal() {
+    const el = document.getElementById('total-units-text');
+    if (!el) return;
+    const n = Number(totalUnits) || 0;
+    const text = (Math.round(n * 10) / 10) % 1 === 0 ? String(Math.round(n)) : String(n);
+    el.textContent = 'مجموع واحدها: ' + text.replace('.', '٫')
+        .replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+
+function cellItemsIn(cell) {
+    const key = `${cell.dataset.day}__${cell.dataset.time}`;
+    return mySchedules.filter(i => `${i.day}__${i.time_slot}` === key);
+}
+
+function cellClicked(cell) {
+    /* خانهٔ خالی ← مودال افزودن از کاتالوگ؛ خانهٔ پر ← جزئیات/ویرایش */
+    const items = cellItemsIn(cell);
+    if (items.length === 0) {
+        openAddClassModal(cell.dataset.day, cell.dataset.time, 'all');
+        return;
+    }
+    const first = items[0];
+    if (first.kind === 'catalog') {
+        openCatalogDetails(Number(first.enrollment_id) || 0);
+    } else {
+        openEditModal(cell, first.week_type === 'all' ? null : first.week_type,
+                      Number(first.id) || 0);
+    }
+}
+
+/* =====================================================
+   کاتالوگ دروس (Part B3/B5/B6)
+   ===================================================== */
+let addModalContext = { day: null, time: null, weekType: 'all' };
+let catalogResults = [];
+let catalogActiveIndex = -1;
+let catalogSearchTimer = null;
+let selectedSection = null;        // انتخابِ پیش‌نمایش‌شده در مودال افزودن
+let detailEnrollmentId = null;     // ثبت‌نامِ باز در مودال جزئیات
+let changeCourseTimer = null;
+
+function showScheduleToast(msg) {
+    const host = document.querySelector('.dashboard-container');
+    if (!host) { alert(msg); return; }
+    const el = document.createElement('div');
+    el.className = 'alert-banner-success';
+    el.innerHTML = `<span class="material-icons-round">check_circle</span> ${escapeHtml(msg)}`;
+    host.insertAdjacentElement('afterbegin', el);
+    setTimeout(() => el.remove(), 5000);
+}
+
+function flashPlacedCells(enrollmentId, items) {
+    /* خانه‌هایی که درسِ تازه در آن‌ها قرار گرفت کمی هایلایت می‌شوند */
+    (items || mySchedules).forEach(it => {
+        if (it.kind !== 'catalog' || Number(it.enrollment_id) !== Number(enrollmentId)) return;
+        const cell = document.querySelector(
+            `#schedule-table .schedule-cell[data-day="${it.day}"][data-time="${it.time_slot}"]`);
+        if (!cell) return;
+        cell.classList.remove('cell-place-flash');
+        void cell.offsetWidth;          // ریستِ انیمیشن
+        cell.classList.add('cell-place-flash');
+        setTimeout(() => cell.classList.remove('cell-place-flash'), 2500);
+    });
+}
+
+function applyScheduleResponse(data, opts) {
+    const o = opts || {};
+    if (Array.isArray(data.items)) {
+        mySchedules.length = 0;
+        data.items.forEach(it => mySchedules.push(it));
+    }
+    if (data.total_units != null) totalUnits = Number(data.total_units) || 0;
+    renderSchedule();
+    updateUnitsTotal();
+    if (o.enrollmentId) flashPlacedCells(o.enrollmentId, data.items);
+    if (o.toast) showScheduleToast(o.toast);
+}
+
+function openAddClassModal(day, time, weekType) {
+    addModalContext = { day: day, time: time, weekType: weekType || 'all' };
+    const hint = document.getElementById('add-class-cell-hint');
+    if (hint) {
+        hint.innerHTML = `<span class="material-icons-round" style="font-size:.95rem; vertical-align:middle;">info_outline</span>
+            خانهٔ انتخاب‌شده: <b>${escapeHtml(dayMap[day] || day)} — ساعت ${escapeHtml(formatScheduleTime(time))}</b>.
+            جای نهاییِ درس از برنامهٔ ثبت‌شدهٔ خودِ درس محاسبه می‌شود، نه از این خانه.`;
+    }
+    document.getElementById('catalog-search-input').value = '';
+    document.getElementById('catalog-group-input').value = '';
+    document.getElementById('catalog-suggestions').innerHTML = '';
+    hideCatalogPreview();
+    const wbox = document.getElementById('catalog-warning-box');
+    if (wbox) { wbox.classList.remove('open'); wbox.innerHTML = ''; }
+    closeManualFields();
+    openModal('add-class-modal');
+    setTimeout(() => document.getElementById('catalog-search-input').focus(), 150);
+}
+
+function closeManualFields() {
+    const mf = document.getElementById('manual-class-form');
+    if (mf) { mf.classList.remove('open'); mf.reset(); }
+}
+
+function openManualFields() {
+    const mf = document.getElementById('manual-class-form');
+    if (!mf) return;
+    document.getElementById('manual-day').value = addModalContext.day || '';
+    document.getElementById('manual-time').value = addModalContext.time || '';
+    const wt = addModalContext.weekType || 'all';
+    const presetRadio = document.querySelector(`input[name="manual_week_type"][value="${wt}"]`);
+    if (presetRadio) presetRadio.checked = true;
+    mf.classList.add('open');
+    setTimeout(() => document.getElementById('manual-course-name').focus(), 100);
+}
+
+function onCatalogSearchInput() {
+    if (catalogSearchTimer) clearTimeout(catalogSearchTimer);
+    catalogSearchTimer = setTimeout(runCatalogSearch, 200);
+}
+
+async function runCatalogSearch() {
+    const q = document.getElementById('catalog-search-input').value.trim();
+    const group = document.getElementById('catalog-group-input').value.trim();
+    const listEl = document.getElementById('catalog-suggestions');
+    /* قانون: حداقل ۲ حرف — مگر وقتی فیلد «گروه» پر باشد (۱ رقم هم کافی است) */
+    if (group ? q.length < 1 : q.length < 2) {
+        listEl.innerHTML = '';
+        catalogResults = [];
+        catalogActiveIndex = -1;
+        return;
+    }
+    try {
+        const res = await csrfFetch(`/api/catalog/search?q=${encodeURIComponent(q)}` +
+            `&group=${encodeURIComponent(group)}&limit=20`);
+        if (!res.ok) return;
+        const data = await res.json();
+        catalogResults = Array.isArray(data.results) ? data.results : [];
+        catalogActiveIndex = -1;
+        renderCatalogSuggestions();
+    } catch (e) { /* غیر bloک‌کننده */ }
+}
+
+function meetingLineFa(m) {
+    return `${m.day_fa} ${formatClockTime(m.start_time)} تا ${formatClockTime(m.end_time)}` +
+        ` (${m.week_fa})` + (m.location_override ? ` — ${m.location_override}` : '');
+}
+
+function renderCatalogSuggestions() {
+    const listEl = document.getElementById('catalog-suggestions');
+    if (!catalogResults.length) {
+        listEl.innerHTML = '';
+        return;
+    }
+    listEl.innerHTML = catalogResults.map((r, ix) => {
+        const added = r.already ? `<span class="sugg-chip added">قبلاً اضافه شده</span>` : '';
+        const meetings = (r.meetings || []).map(m => escapeHtml(meetingLineFa(m))).join('؛ ');
+        return `<li class="catalog-suggestion${r.already ? ' disabled' : ''}${ix === catalogActiveIndex ? ' active' : ''}"
+                    role="option" data-index="${ix}"
+                    onmouseenter="setCatalogActive(${ix}, false)"
+                    onclick="selectCatalogResult(${ix})">
+            <span class="sugg-title">${escapeHtml(r.name)}
+                <span class="sugg-chip">گروه ${escapeHtml(String(r.group))}</span>
+                <span class="sugg-chip muted">کد ${escapeHtml(r.code)}</span>
+                <span class="sugg-chip muted">${escapeHtml(faUnitsText(r.units))} واحد</span>
+                ${added}
+            </span>
+            <span class="sugg-line">${r.teacher ? 'استاد ' + escapeHtml(r.teacher) : 'استاد تعیین نشده'}${r.location ? ' — ' + escapeHtml(r.location) : ''}</span>
+            <span class="sugg-line">${meetings || 'جلسه‌ای ثبت نشده'}</span>
+        </li>`;
+    }).join('');
+}
+
+function setCatalogActive(ix, scroll = true) {
+    catalogActiveIndex = ix;
+    const nodes = document.querySelectorAll('#catalog-suggestions .catalog-suggestion');
+    nodes.forEach((n, i) => n.classList.toggle('active', i === ix));
+    if (scroll && nodes[ix]) nodes[ix].scrollIntoView({ block: 'nearest' });
+}
+
+function onCatalogSearchKey(e) {
+    const nodes = document.querySelectorAll('#catalog-suggestions .catalog-suggestion');
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!nodes.length) return;
+        setCatalogActive(catalogActiveIndex < nodes.length - 1 ? catalogActiveIndex + 1 : 0);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!nodes.length) return;
+        setCatalogActive(catalogActiveIndex > 0 ? catalogActiveIndex - 1 : nodes.length - 1);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (catalogActiveIndex >= 0 && catalogResults[catalogActiveIndex]) {
+            selectCatalogResult(catalogActiveIndex);
+        }
+    } else if (e.key === 'Escape') {
+        closeModal('add-class-modal');
+    }
+}
+
+function hideCatalogPreview() {
+    selectedSection = null;
+    const pv = document.getElementById('catalog-preview');
+    if (pv) { pv.classList.remove('open'); pv.innerHTML = ''; }
+}
+
+function selectCatalogResult(ix) {
+    const r = catalogResults[ix];
+    if (!r) return;
+    if (r.already) return;          // غیرفعال — «قبلاً اضافه شده»
+    selectedSection = r;
+    setCatalogActive(ix, false);
+    const pv = document.getElementById('catalog-preview');
+    const meetings = (r.meetings || []).map(m =>
+        `<li><span class="material-icons-round">event</span>${escapeHtml(meetingLineFa(m))}</li>`).join('');
+    pv.innerHTML = `
+        <span class="preview-title">${escapeHtml(r.name)}</span>
+        <span class="preview-line"><span class="material-icons-round">menu_book</span>کد درسی: ${escapeHtml(r.code)} — گروه ${escapeHtml(String(r.group))} — ${escapeHtml(faUnitsText(r.units))} واحد</span>
+        ${r.major ? `<span class="preview-line"><span class="material-icons-round">school</span>رشته: ${escapeHtml(r.major)}</span>` : ''}
+        <span class="preview-line"><span class="material-icons-round">person</span>استاد: ${escapeHtml(r.teacher || '—')}</span>
+        <span class="preview-line"><span class="material-icons-round">pin_drop</span>مکان پیش‌فرض: ${escapeHtml(r.location || '—')}</span>
+        <ul class="preview-meetings">${meetings}</ul>
+        <div class="preview-actions">
+            <button type="button" class="btn btn-custom" onclick="enrollSelected()">
+                <span class="material-icons-round">add_task</span> افزودن به برنامه
+            </button>
+        </div>`;
+    pv.classList.add('open');
+}
+
+function renderEnrollWarning(data) {
+    const wbox = document.getElementById('catalog-warning-box');
+    let html = `<b>${escapeHtml(data.error || 'هشدار')}</b>`;
+    if (Array.isArray(data.conflicts) && data.conflicts.length) {
+        html += '<ul>' + data.conflicts.map(c =>
+            `<li>${escapeHtml(`${c.day_fa} ${formatClockTime(c.start)} تا ${formatClockTime(c.end)} — تداخل با «${c.conflicts_with}»`)}</li>`
+        ).join('') + '</ul>';
+    }
+    wbox.innerHTML = html;
+    wbox.classList.add('open');
+}
+
+async function enrollSelected() {
+    if (!selectedSection) return;
+    const wbox = document.getElementById('catalog-warning-box');
+    wbox.classList.remove('open');
+    let body = { section_id: selectedSection.section_id };
+    /* ابتدا بدون flag می‌فرستیم؛ سرور در صورت نیاز 409 با requires_* برمی‌گرداند */
+    if (enrollSelected._forceReplace) body.replace = true;
+    if (enrollSelected._forceConfirm) body.confirm = true;
+    try {
+        const res = await csrfFetch('/api/catalog/enroll', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            enrollSelected._forceReplace = false;
+            enrollSelected._forceConfirm = false;
+            closeModal('add-class-modal');
+            const label = data.placed ? data.placed.label : '';
+            applyScheduleResponse(data, {
+                enrollmentId: data.enrollment_id,
+                toast: label
+                    ? `درس در زمان ثبت‌شدهٔ خود (${label}) قرار گرفت`
+                    : 'درس به برنامه اضافه شد'
+            });
+            return;
+        }
+        if (data.requires_replace) {
+            if (!confirm(data.error + '\nآیا گروه فعلی جایگزین شود؟')) return;
+            enrollSelected._forceReplace = true;
+            enrollSelected();
+            return;
+        }
+        if (data.requires_confirm) {
+            renderEnrollWarning(data);
+            if (!confirm(data.error + '\nآیا ادامه می‌دهید؟')) return;
+            enrollSelected._forceConfirm = true;
+            enrollSelected();
+            return;
+        }
+        renderEnrollWarning(data);
+    } catch (e) {
+        alert('خطا در ارتباط با سرور');
+    }
+}
+
+function handleManualSubmit(e) {
+    e.preventDefault();
+    const payload = {
+        day: document.getElementById('manual-day').value,
+        time_slot: document.getElementById('manual-time').value,
+        course_name: document.getElementById('manual-course-name').value.trim(),
+        professor_name: document.getElementById('manual-professor').value.trim(),
+        class_location: document.getElementById('manual-location').value.trim(),
+        week_type: (document.querySelector('input[name="manual_week_type"]:checked') || {}).value || 'all',
+        units: document.getElementById('manual-units').value.trim()
+    };
+    if (!payload.course_name) return;
+    csrfFetch('/update_schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(resp => ({ ok: res.ok, resp })))
+    .then(({ ok, resp }) => {
+        if (resp.status === 'success') {
+            closeModal('add-class-modal');
+            refreshSchedule();
+        } else {
+            alert('خطا در ذخیره‌سازی: ' + (resp.message || 'خطای ناشناخته'));
+        }
+    })
+    .catch(() => alert('خطا در ارتباط با سرور'));
+}
+
+/* ── مودال جزئیات درسِ کاتالوگی (B5) ── */
+function enrollmentItems(enrollmentId) {
+    return mySchedules.filter(it => it.kind === 'catalog' &&
+        Number(it.enrollment_id) === Number(enrollmentId));
+}
+
+function openCatalogDetails(enrollmentId) {
+    const items = enrollmentItems(enrollmentId);
+    if (!items.length) { refreshSchedule(); return; }
+    detailEnrollmentId = enrollmentId;
+    const base = items[0];
+    document.getElementById('course-details-title').textContent = base.name || 'جزئیات درس';
+    const body = document.getElementById('course-details-body');
+    const sorted = items.slice().sort((a, b) =>
+        SCHEDULE_DAYS.indexOf(a.day) - SCHEDULE_DAYS.indexOf(b.day) ||
+        String(a.start || '').localeCompare(String(b.start || '')));
+    const meetingsHtml = sorted.map(it => {
+        const timeText = (it.start && it.end)
+            ? `${formatClockTime(it.start)} تا ${formatClockTime(it.end)}` +
+              (it.exact_time ? '' : '') : formatScheduleTime(it.time_slot);
+        return `<li><span class="material-icons-round">event</span>
+            ${escapeHtml((dayMap[it.day] || it.day) + ' ' + timeText)}
+            <span class="week-marker week-${it.week_type || 'all'}">${escapeHtml(getWeekLabel(it.week_type))}</span></li>`;
+    }).join('');
+    const inactive = base.is_active === false;
+    body.innerHTML = `
+        ${inactive ? `<p class="card-inactive-notice"><span class="material-icons-round">error_outline</span>این گروه توسط ادمین حذف شد، لطفاً گروه جدید انتخاب کنید</p>` : ''}
+        <div class="detail-grid">
+            <span class="detail-row"><span class="material-icons-round">menu_book</span><b>نام درس:</b> ${escapeHtml(base.name || '—')}</span>
+            <span class="detail-row"><span class="material-icons-round">tag</span><b>کد درسی:</b> ${escapeHtml(String(base.code || '—'))}</span>
+            <span class="detail-row"><span class="material-icons-round">group</span><b>گروه:</b> ${escapeHtml(String(base.group || '—'))}</span>
+            <span class="detail-row"><span class="material-icons-round">person</span><b>استاد:</b> ${escapeHtml(base.teacher || '—')}</span>
+            <span class="detail-row"><span class="material-icons-round">pin_drop</span><b>مکان:</b> ${escapeHtml(base.room || '—')}</span>
+            <span class="detail-row"><span class="material-icons-round">calculate</span><b>واحد:</b> ${escapeHtml(base.units != null ? faUnitsText(base.units) : '—')}</span>
+            ${base.major ? `<span class="detail-row"><span class="material-icons-round">school</span><b>رشته:</b> ${escapeHtml(base.major)}</span>` : ''}
+        </div>
+        <b class="detail-row" style="color:var(--text-secondary);">جلسه‌های هفتگی:</b>
+        <ul class="detail-meetings">${meetingsHtml}</ul>`;
+    document.getElementById('course-group-picker').innerHTML = '';
+    document.getElementById('course-change-search').style.display = 'none';
+    document.getElementById('change-course-input').value = '';
+    document.getElementById('change-course-suggestions').innerHTML = '';
+    openModal('course-details-modal');
+}
+
+async function toggleGroupPicker() {
+    const picker = document.getElementById('course-group-picker');
+    if (picker.innerHTML) { picker.innerHTML = ''; return; }
+    const items = enrollmentItems(detailEnrollmentId);
+    if (!items.length) return;
+    const base = items[0];
+    try {
+        const res = await csrfFetch(`/api/catalog/search?q=${encodeURIComponent(String(base.code || ''))}&limit=50`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const others = (data.results || []).filter(r =>
+            Number(r.section_id) !== Number(base.section_id));
+        if (!others.length) {
+            picker.innerHTML = '<p class="sugg-line">گروه دیگری برای این درس ثبت نشده است.</p>';
+            return;
+        }
+        picker.innerHTML = others.map(r => `
+            <div class="detail-group">
+                <span class="detail-group-info">
+                    <strong>گروه ${escapeHtml(String(r.group))} — ${escapeHtml(r.teacher || 'استاد تعیین نشده')}</strong>
+                    <span>${(r.meetings || []).map(m => escapeHtml(meetingLineFa(m))).join('؛ ') || 'جلسه‌ای ثبت نشده'}</span>
+                    <span>${escapeHtml(faUnitsText(r.units))} واحد${r.location ? ' — ' + escapeHtml(r.location) : ''}</span>
+                </span>
+                <button type="button" class="btn btn-outline"
+                        onclick="switchGroup(${Number(r.section_id)})">
+                    <span class="material-icons-round">swap_horiz</span> انتخاب
+                </button>
+            </div>`).join('');
+    } catch (e) { /* غیر bloک‌کننده */ }
+}
+
+async function switchGroup(sectionId) {
+    try {
+        const res = await csrfFetch(`/api/catalog/enrollments/${Number(detailEnrollmentId)}/replace`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ section_id: sectionId })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            closeModal('course-details-modal');
+            const label = data.placed ? data.placed.label : '';
+            applyScheduleResponse(data, {
+                enrollmentId: data.enrollment_id,
+                toast: label ? `گروه تغییر کرد — درس در زمان ثبت‌شدهٔ خود (${label}) قرار گرفت`
+                             : 'گروه تغییر کرد'
+            });
+            return;
+        }
+        if (data.requires_confirm) {
+            renderEnrollWarning(data);
+            if (!confirm(data.error + '\nآیا ادامه می‌دهید؟')) return;
+            const res2 = await csrfFetch(`/api/catalog/enrollments/${Number(detailEnrollmentId)}/replace`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ section_id: sectionId, confirm: true })
+            });
+            const data2 = await res2.json();
+            if (res2.ok && data2.status === 'success') {
+                closeModal('course-details-modal');
+                applyScheduleResponse(data2, {
+                    enrollmentId: data2.enrollment_id,
+                    toast: 'گروه تغییر کرد (با تداخل تأییدشده)'
+                });
+                return;
+            }
+            alert(data2.error || 'خطا');
+            return;
+        }
+        alert(data.error || 'خطا');
+    } catch (e) { alert('خطا در ارتباط با سرور'); }
+}
+
+function toggleChangeCourse() {
+    const box = document.getElementById('course-change-search');
+    const open = box.style.display !== 'none';
+    box.style.display = open ? 'none' : 'block';
+    document.getElementById('course-group-picker').innerHTML = '';
+    if (!open) setTimeout(() => document.getElementById('change-course-input').focus(), 100);
+}
+
+function onChangeCourseSearchInput() {
+    if (changeCourseTimer) clearTimeout(changeCourseTimer);
+    changeCourseTimer = setTimeout(runChangeCourseSearch, 200);
+}
+
+async function runChangeCourseSearch() {
+    const q = document.getElementById('change-course-input').value.trim();
+    const listEl = document.getElementById('change-course-suggestions');
+    if (q.length < 2) { listEl.innerHTML = ''; return; }
+    try {
+        const res = await csrfFetch(`/api/catalog/search?q=${encodeURIComponent(q)}&limit=20`);
+        if (!res.ok) return;
+        const data = await res.json();
+        listEl.innerHTML = (data.results || []).map(r => `
+            <li class="catalog-suggestion${r.already ? ' disabled' : ''}"
+                onclick="${r.already ? '' : `doChangeCourse(${Number(r.section_id)})`}">
+                <span class="sugg-title">${escapeHtml(r.name)}
+                    <span class="sugg-chip">گروه ${escapeHtml(String(r.group))}</span>
+                    <span class="sugg-chip muted">کد ${escapeHtml(r.code)}</span>
+                    ${r.already ? '<span class="sugg-chip added">قبلاً اضافه شده</span>' : ''}
+                </span>
+                <span class="sugg-line">${(r.meetings || []).map(m => escapeHtml(meetingLineFa(m))).join('؛ ') || 'جلسه‌ای ثبت نشده'}</span>
+            </li>`).join('');
+    } catch (e) { /* غیر bloک‌کننده */ }
+}
+
+function onChangeCourseSearchKey(e) {
+    if (e.key === 'Escape') closeModal('course-details-modal');
+}
+
+async function doChangeCourse(sectionId) {
+    try {
+        const res = await csrfFetch(`/api/catalog/enrollments/${Number(detailEnrollmentId)}/replace`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ section_id: sectionId })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            closeModal('course-details-modal');
+            const label = data.placed ? data.placed.label : '';
+            applyScheduleResponse(data, {
+                enrollmentId: data.enrollment_id,
+                toast: label ? `درس عوض شد — درس در زمان ثبت‌شدهٔ خود (${label}) قرار گرفت`
+                             : 'درس عوض شد'
+            });
+            return;
+        }
+        if (data.requires_confirm) {
+            renderEnrollWarning(data);
+            if (!confirm(data.error + '\nآیا ادامه می‌دهید؟')) return;
+            const res2 = await csrfFetch(`/api/catalog/enrollments/${Number(detailEnrollmentId)}/replace`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ section_id: sectionId, confirm: true })
+            });
+            const data2 = await res2.json();
+            if (res2.ok && data2.status === 'success') {
+                closeModal('course-details-modal');
+                applyScheduleResponse(data2, {
+                    enrollmentId: data2.enrollment_id,
+                    toast: 'درس عوض شد (با تداخل تأییدشده)'
+                });
+                return;
+            }
+            alert(data2.error || 'خطا');
+            return;
+        }
+        alert(data.error || 'خطا');
+    } catch (e) { alert('خطا در ارتباط با سرور'); }
+}
+
+async function deleteEnrollment() {
+    if (!confirm('این درس به‌همراه همهٔ جلساتش از برنامهٔ شما حذف شود؟')) return;
+    try {
+        const res = await csrfFetch(`/api/catalog/enrollments/${Number(detailEnrollmentId)}/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            closeModal('course-details-modal');
+            applyScheduleResponse(data, { toast: 'درس از برنامه حذف شد' });
+            return;
+        }
+        alert(data.error || 'خطا');
+    } catch (e) { alert('خطا در ارتباط با سرور'); }
+}
+
+function openEditModalForWeek(cell, weekType) {
+    openScheduleModal(cell.dataset.day, cell.dataset.time, weekType, 0);
+}
+
+function openEditModal(cell, weekType, recordId) {
+    openScheduleModal(cell.dataset.day, cell.dataset.time, weekType, recordId);
+}
+
+function openScheduleModal(day, time, weekType, recordId) {
+    // اگر شناسه رکورد مشخص است، دقیقاً همان رکورد ویرایش می‌شود
+    let existing = null;
+    if (recordId !== undefined && recordId !== null && recordId !== '') {
+        existing = mySchedules.find(s => s.kind !== 'catalog' && s.id === Number(recordId)) || null;
+    }
+    if (!existing && weekType) {
+        existing = mySchedules.find(s => s.kind !== 'catalog' && s.day === day &&
+            s.time_slot === time && s.week_type === weekType) || null;
+    }
+
+    document.getElementById('day-input').value = day;
+    document.getElementById('time-input').value = time;
+    document.getElementById('modal-title').textContent = `${dayMap[day]} — ساعت ${formatScheduleTime(time)}`;
+
+    // نوع هفته: رکورد موجود ← نوع خودش؛ نیمه خالی فرد/زوج ← همان نوع
+    // (قبلاً همیشه «هر هفته» پیش‌فرض بود و ذخیره، کلاس نوع مقابل را پاک می‌کرد)
+    const radioVal = existing ? (existing.week_type || 'all')
+                   : (weekType === 'odd' || weekType === 'even') ? weekType : 'all';
+    const presetRadio = document.querySelector(`input[name="week_type"][value="${radioVal}"]`);
+    if (presetRadio) presetRadio.checked = true;
+
+    document.getElementById('course-name').value = existing ? (existing.course_name || '') : '';
+    document.getElementById('professor-name').value = existing ? (existing.professor_name || '') : '';
+    document.getElementById('class-location').value = existing ? (existing.class_location || '') : '';
+    document.getElementById('edit-record-id').value = existing ? existing.id : '';
+    const unitsInput = document.getElementById('class-units');
+    if (unitsInput) {
+        unitsInput.value = (existing && existing.units != null) ? String(existing.units) : '';
+    }
+
+    openModal('edit-modal');
+    setTimeout(() => document.getElementById('course-name').focus(), 150);
+}
+
+function handleScheduleSubmit(e) {
+    e.preventDefault();
+    const data = {
+        day: document.getElementById('day-input').value,
+        time_slot: document.getElementById('time-input').value,
+        course_name: document.getElementById('course-name').value.trim(),
+        class_location: document.getElementById('class-location').value.trim(),
+        professor_name: document.getElementById('professor-name').value.trim(),
+        week_type: document.querySelector('input[name="week_type"]:checked').value,
+        units: (document.getElementById('class-units') || {}).value
+    };
+    if (data.units !== undefined) data.units = String(data.units).trim();
+    const editId = document.getElementById('edit-record-id').value;
+    if (editId) data.id = parseInt(editId, 10);
+    saveScheduleItem(data, () => closeModal('edit-modal'));
+}
+
+function deleteClass() {
+    if (!confirm('آیا می‌خواهید این کلاس را حذف کنید؟')) return;
+    const data = {
+        day: document.getElementById('day-input').value,
+        time_slot: document.getElementById('time-input').value,
+        course_name: '',
+        week_type: document.querySelector('input[name="week_type"]:checked').value
+    };
+    const editId = document.getElementById('edit-record-id').value;
+    if (editId) data.id = parseInt(editId, 10);
+    saveScheduleItem(data, () => closeModal('edit-modal'));
+}
+
+function saveScheduleItem(data, onSuccess) {
+    csrfFetch('/update_schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json().then(resp => ({ ok: res.ok, resp })))
+    .then(({ ok, resp }) => {
+        if (resp.status === 'success') {
+            /* وضعیت نهایی (شامل مجموع واحدها) را از سرور می‌گیریم تا با
+               اعتبارسنجی سمت سرور و کلاس‌های کاتالوگی هم‌خوان بماند */
+            refreshSchedule().then(() => { if (onSuccess) onSuccess(); });
+        } else {
+            alert('خطا در ذخیره‌سازی: ' + (resp.message || 'خطای ناشناخته'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('خطا در ارتباط با سرور');
+    });
+}
+
+function printSchedule() {
+    /* چاپ کامل و تمام‌سیاه‌وسفید — از داده ساخته می‌شود (نه کپی DOM):
+       بدون دکمهٔ «+» و بدون رنگ؛ فقط متن، خط و (فرد)/(زوج)/(هر هفته) */
+    const todayStr = (typeof TehranTime !== 'undefined')
+        ? (TehranTime.formatDate(TehranTime.now()) || '') : '';
+    const matrix = {};
+    mySchedules.forEach(s => {
+        const key = `${s.day}__${s.time_slot}`;
+        if (!matrix[key]) matrix[key] = [];
+        matrix[key].push(s);
+    });
+    const weekText = wt => wt === 'odd' ? '(فرد)' : wt === 'even' ? '(زوج)' : '(هر هفته)';
+    let rows = '';
+    SCHEDULE_TIMES.forEach(time => {
+        rows += `<tr><td class="t">${time.replace('-', ' تا ')}</td>`;
+        SCHEDULE_DAYS.forEach(day => {
+            const items = (matrix[`${day}__${time}`] || []).slice().sort(
+                (a, b) => String(a.week_type || 'all').localeCompare(String(b.week_type || 'all')));
+            rows += '<td>' + items.map(s => {
+                /* کپی/چاپ هم استاد و مکان را کامل دارند (شخصی و کاتالوگی) */
+                const groupTxt = (s.kind === 'catalog' && s.group)
+                    ? ` — گروه ${s.group}${s.code ? ` (کد ${s.code})` : ''}` : '';
+                const exactTxt = (s.exact_time && s.start && s.end)
+                    ? `<br><span>${escapeHtml(formatClockTime(s.start))} تا ${escapeHtml(formatClockTime(s.end))}</span>` : '';
+                const unitsTxt = (s.units != null)
+                    ? `<br><span>واحد ${escapeHtml(faUnitsText(s.units))}</span>` : '';
+                return `<div class="cls"><b>${escapeHtml(itemName(s))}</b>${escapeHtml(groupTxt)} ${weekText(s.week_type || 'all')}` +
+                (itemTeacher(s) ? `<br><span>${escapeHtml(itemTeacher(s))}</span>` : '') +
+                (itemRoom(s) ? `<br><span>${escapeHtml(itemRoom(s))}</span>` : '') +
+                exactTxt + unitsTxt +
+                `</div>`;
+            }).join('') + '</td>';
+        });
+        rows += '</tr>';
+    });
+    const win = window.open('', '_blank');
+    win.document.write(`
+        <html dir="rtl"><head>
+        <meta charset="UTF-8">
+        <title>برنامه هفتگی</title>
+        <style>
+            *{ color:#000 !important; background:#fff !important; border-color:#777 !important; box-shadow:none !important; }
+            body { font-family: Vazirmatn, Tahoma, sans-serif; padding: 1rem; }
+            h2 { text-align: center; margin: 0 0 .3rem; font-size: 18px; }
+            p.meta { text-align:center; font-size: 12px; margin: 0 0 .8rem; }
+            table { width:100%; border-collapse: collapse; }
+            th, td { border: 1px solid #777; padding: 6px 5px; vertical-align: top; font-size: 12px; }
+            th { background:#eee !important; font-weight: 700; text-align: center; }
+            td.t { white-space: nowrap; font-weight: 700; text-align: center; width: 74px; }
+            .cls { margin-bottom: 4px; font-size: 12px; }
+            .cls span { font-size: 11px; }
+        </style></head><body>
+        <h2>برنامه هفتگی</h2>
+        ${todayStr ? `<p class="meta">تاریخ چاپ: ${todayStr}</p>` : ''}
+        <p class="meta">مجموع واحدها: ${escapeHtml(faUnitsText(totalUnits))}</p>
+        <table>
+            <thead><tr><th>ساعت</th>${SCHEDULE_DAY_NAMES.map(d => `<th>${d}</th>`).join('')}</tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
+}
+
+function copyScheduleAsText() {
+    let text = 'برنامه هفتگی\n' + '='.repeat(50) + '\n\n';
+    SCHEDULE_DAYS.forEach((day, di) => {
+        const daySchedules = mySchedules.filter(s => s.day === day);
+        text += `📅 ${SCHEDULE_DAY_NAMES[di]}\n`;
+        if (daySchedules.length === 0) {
+            text += '  — بدون کلاس\n\n';
+            return;
+        }
+        daySchedules.sort((a, b) => SCHEDULE_TIMES.indexOf(a.time_slot) - SCHEDULE_TIMES.indexOf(b.time_slot));
+        daySchedules.forEach(s => {
+            const weekLabel = s.week_type === 'odd' ? '(فرد)' : s.week_type === 'even' ? '(زوج)' : '';
+            text += `  ⏰ ${s.time_slot.replace('-',' تا ')}: `;
+            text += itemName(s);
+            const teacherC = itemTeacher(s);
+            if (teacherC) text += ` | استاد ${teacherC}`;
+            const roomC = itemRoom(s);
+            if (roomC) text += ` | ${roomC}`;
+            if (s.kind === 'catalog' && s.group) text += ` | گروه ${s.group}`;
+            if (s.units != null) text += ` | واحد ${faUnitsText(s.units)}`;
+            if (s.exact_time && s.start && s.end) {
+                text += ` | ${formatClockTime(s.start)} تا ${formatClockTime(s.end)}`;
+            }
+            if (weekLabel) text += ` ${weekLabel}`;
+            text += '\n';
+        });
+        text += '\n';
+    });
+    text += `مجموع واحدها: ${faUnitsText(totalUnits)}\n`;
+    if (!navigator.clipboard) {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    } else {
+        navigator.clipboard.writeText(text);
+    }
+    const btn = event.target.closest('button');
+    const original = btn.innerHTML;
+    btn.innerHTML = '<span class="material-icons-round">check</span> کپی شد!';
+    btn.style.color = 'var(--success)';
+    setTimeout(() => { btn.innerHTML = original; btn.style.color = ''; }, 2000);
+}
+
+let parsedScheduleData = [];
+
+function openPasteModal() {
+    document.getElementById('excel-paste-area').value = '';
+    document.getElementById('paste-preview').style.display = 'none';
+    document.getElementById('apply-paste-btn').disabled = true;
+    parsedScheduleData = [];
+    openModal('paste-modal');
+    setTimeout(() => document.getElementById('excel-paste-area').focus(), 150);
+}
+
+function faToEnDigits(str) {
+    return String(str == null ? '' : str).replace(/[۰-۹٠-٩]/g, function (d) {
+        const code = d.charCodeAt(0);
+        return String(code >= 0x06F0 ? code - 0x06F0 : code - 0x0660);
+    });
+}
+
+function parseExcelPaste() {
+    const raw = document.getElementById('excel-paste-area').value.trim();
+    if (!raw) {
+        document.getElementById('paste-preview').style.display = 'none';
+        document.getElementById('apply-paste-btn').disabled = true;
+        parsedScheduleData = [];
+        return;
+    }
+    const rows = raw.split('\n').map(r => r.split('\t').map(c => c.trim()));
+    parsedScheduleData = [];
+    const dayKeywords = {
+        'شنبه': 'saturday',
+        'یکشنبه': 'sunday', 'يکشنبه': 'sunday',
+        'دوشنبه': 'monday', 'سه شنبه': 'tuesday',
+        'سه‌شنبه': 'tuesday', 'چهارشنبه': 'wednesday',
+        'sat': 'saturday', 'sun': 'sunday', 'mon': 'monday',
+        'tue': 'tuesday', 'wed': 'wednesday'
+    };
+    const timePattern = /(\d{1,2})\s*[-–—]\s*(\d{1,2})/;
+    const weekOddKeywords = ['فرد', 'odd', 'زوج نیست'];
+    const weekEvenKeywords = ['زوج', 'even'];
+    let dayColumns = {};
+    let headerRow = -1;
+    rows.forEach((row, ri) => {
+        row.forEach((cell, ci) => {
+            const lower = cell.toLowerCase().trim();
+            for (const [keyword, dayKey] of Object.entries(dayKeywords)) {
+                if (lower === keyword || lower.includes(keyword)) {
+                    if (!dayColumns[ci]) dayColumns[ci] = dayKey;
+                    headerRow = ri;
+                }
+            }
+        });
+    });
+    if (Object.keys(dayColumns).length > 0) {
+        rows.forEach((row, ri) => {
+            if (ri <= headerRow) return;
+            if (!row.some(c => c)) return;
+            // ارقام فارسی در ستون ساعت (۸-۱۰) باید قبل از تطبیق تبدیل شوند
+            const timeMatch = row[0] ? faToEnDigits(row[0]).match(timePattern) : null;
+            const timeSlot = timeMatch ? `${timeMatch[1]}-${timeMatch[2]}` : null;
+            Object.entries(dayColumns).forEach(([ci, dayKey]) => {
+                const cellVal = row[parseInt(ci)] || '';
+                if (!cellVal) return;
+                const parts = cellVal.split(/[|،,\n]/).map(p => p.trim()).filter(p => p);
+                let courseName = parts[0] || '';
+                let professorName = '';
+                let classLocation = '';
+                let weekType = 'all';
+                parts.forEach((part, pi) => {
+                    if (pi === 0) { courseName = part; return; }
+                    const lowerPart = part.toLowerCase();
+                    if (part.includes('دکتر') || part.includes('مهندس') || part.includes('استاد') ||
+                        part.includes('dr.') || part.includes('prof')) {
+                        professorName = part.replace(/^استاد[:\s]*/i, '').trim();
+                    } else if (weekOddKeywords.some(k => lowerPart.includes(k))) {
+                        weekType = 'odd';
+                    } else if (weekEvenKeywords.some(k => lowerPart.includes(k))) {
+                        weekType = 'even';
+                    } else if (part.match(/\d+/) || lowerPart.includes('کلاس') ||
+                               lowerPart.includes('آزمایشگاه') || lowerPart.includes('سالن') ||
+                               lowerPart.includes('lab') || lowerPart.includes('room')) {
+                        classLocation = part;
+                    } else if (!professorName && pi === 1) {
+                        professorName = part;
+                    } else if (!classLocation && pi === 2) {
+                        classLocation = part;
+                    }
+                });
+                if (courseName && timeSlot) {
+                    parsedScheduleData.push({
+                        day: dayKey, time_slot: timeSlot, course_name: courseName,
+                        professor_name: professorName, class_location: classLocation, week_type: weekType
+                    });
+                }
+            });
+        });
+    } else {
+        rows.forEach(row => {
+            if (row.length < 3) return;
+            const dayKey = Object.entries(dayKeywords).find(([kw]) => row[0] && row[0].toLowerCase().includes(kw.toLowerCase()));
+            if (!dayKey) return;
+            const timeMatch = row[1] ? faToEnDigits(row[1]).match(timePattern) : null;
+            if (!timeMatch) return;
+            parsedScheduleData.push({
+                day: dayKey[1], time_slot: `${timeMatch[1]}-${timeMatch[2]}`,
+                course_name: row[2] || '', professor_name: row[3] || '', class_location: row[4] || '',
+                week_type: row[5] ? (weekOddKeywords.some(k => row[5].includes(k)) ? 'odd' :
+                            weekEvenKeywords.some(k => row[5].includes(k)) ? 'even' : 'all') : 'all'
+            });
+        });
+    }
+    showPastePreview();
+}
+
+function showPastePreview() {
+    const container = document.getElementById('paste-preview');
+    const tableContainer = document.getElementById('paste-preview-table');
+    if (parsedScheduleData.length === 0) {
+        container.style.display = 'none';
+        document.getElementById('apply-paste-btn').disabled = true;
+        return;
+    }
+    container.style.display = 'block';
+    container.querySelector('h4').innerHTML =
+        `<span class="material-icons-round">preview</span> پیش‌نمایش (${parsedScheduleData.length} ردیف تشخیص داده شد)`;
+    document.getElementById('apply-paste-btn').disabled = false;
+    const dayNames = { 'saturday':'شنبه', 'sunday':'یکشنبه', 'monday':'دوشنبه', 'tuesday':'سه‌شنبه', 'wednesday':'چهارشنبه' };
+    const weekNames = { 'all': 'همیشه', 'odd': 'فرد', 'even': 'زوج' };
+    let html = `<div style="overflow-x:auto;"><table class="preview-table">
+        <thead><tr><th>روز</th><th>ساعت</th><th>نام درس</th><th>استاد</th><th>مکان</th><th>نوع هفته</th></tr></thead><tbody>`;
+    parsedScheduleData.forEach(item => {
+        html += `<tr>
+            <td>${escapeHtml(dayNames[item.day] || item.day)}</td>
+            <td>${escapeHtml(formatScheduleTime(item.time_slot))}</td>
+            <td><strong>${escapeHtml(item.course_name || '—')}</strong></td>
+            <td>${escapeHtml(item.professor_name || '—')}</td>
+            <td>${escapeHtml(item.class_location || '—')}</td>
+            <td>${escapeHtml(weekNames[item.week_type] || '—')}</td>
+        </tr>`;
+    });
+    html += '</tbody></table></div>';
+    tableContainer.innerHTML = html;
+}
+
+function applyPastedSchedule() {
+    if (parsedScheduleData.length === 0) return;
+    if (!confirm(`آیا مطمئن هستید؟ برنامه هفتگی فعلی شما پاک می‌شود و ${parsedScheduleData.length} کلاس جدید جایگزین می‌شود.`)) return;
+    const btn = document.getElementById('apply-paste-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-icons-round">hourglass_empty</span> در حال پردازش...';
+    csrfFetch('/bulk_update_schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schedules: parsedScheduleData })
+    })
+    .then(res => res.json())
+    .then(resp => {
+        if (resp.status === 'success') {
+            closeModal('paste-modal');
+            // وضعیت نهایی (لیست یکپارچه + مجموع واحدها) را از سرور بگیر تا با
+            // اعتبارسنجی سمت سرور و کلاس‌های کاتالوگی هم‌خوان بماند
+            refreshSchedule();
+            const importedCount = resp.imported != null ? resp.imported : resp.count;
+            const msg = document.createElement('div');
+            msg.className = 'alert-banner-success';
+            let summary = `${importedCount} کلاس با موفقیت وارد شد.`;
+            if (resp.skipped_count) {
+                summary += ` <strong>${resp.skipped_count} ردیف رد شد</strong>`;
+                if (Array.isArray(resp.skipped) && resp.skipped.length) {
+                    const first = resp.skipped[0];
+                    summary += ` (ردیف ${first.row}: ${escapeHtml(first.reason)})`;
+                }
+            }
+            msg.innerHTML = `<span class="material-icons-round">check_circle</span> ${summary}`;
+            document.querySelector('.dashboard-container').insertAdjacentElement('afterbegin', msg);
+            setTimeout(() => msg.remove(), 6000);
+        } else {
+            alert('خطا: ' + (resp.message || 'خطای ناشناخته'));
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-icons-round">check</span> اعمال برنامه';
+        }
+    })
+    .catch(() => {
+        alert('خطا در ارتباط با سرور');
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-icons-round">check</span> اعمال برنامه';
+    });
+}
+
+function loadAvailableSlots() {
+    document.querySelectorAll('#reservation-table .reserve-cell').forEach(cell => {
+        cell.innerHTML = '<span class="cell-loading">بارگذاری...</span>';
+    });
+    csrfFetch('/api/master_schedule')
+        .then(res => res.json())
+        .then(slots => {
+            document.querySelectorAll('#reservation-table .reserve-cell').forEach(cell => {
+                cell.innerHTML = '<span class="cell-empty-text">—</span>';
+            });
+            slots.forEach(slot => {
+                const cell = document.querySelector(`#reservation-table .reserve-cell[data-day="${slot.day}"][data-time="${slot.time_slot}"]`);
+                if (!cell) return;
+                if (slot.available_rooms.length > 0) {
+                    let html = '';
+                    slot.available_rooms.forEach(room => {
+                        const roomText = escapeHtml(room);
+                        const roomValue = escapeJs(room);
+                        const dayValue = escapeJs(slot.day);
+                        const timeValue = escapeJs(slot.time_slot);
+                        html += `<button class="room-pill" onclick="openReserveModal(${Number(slot.id) || 0}, '${roomValue}', '${dayValue}', '${timeValue}')">${roomText}</button>`;
+                    });
+                    cell.innerHTML = html;
+                } else if (slot.all_rooms.length > 0) {
+                    cell.innerHTML = '<span class="cell-reserved-text">رزرو شده</span>';
+                }
+            });
+        })
+        .catch(() => {
+            document.querySelectorAll('#reservation-table .reserve-cell').forEach(cell => {
+                cell.innerHTML = '<span class="cell-empty-text" style="color:var(--error);">خطا</span>';
+            });
+        });
+}
+
+function openReserveModal(slotId, room, day, time) {
+    document.getElementById('reserve-room-display').textContent = `کلاس ${room}`;
+    document.getElementById('reserve-time-display').textContent = `${dayMap[day]} — ساعت ${formatScheduleTime(time)}`;
+    document.getElementById('reserve-reason').value = '';
+    const form = document.getElementById('reserve-form');
+    form.action = `/submit_reservation/${slotId}/${room}`;
+    openModal('reserve-modal');
+    setTimeout(() => document.getElementById('reserve-reason').focus(), 150);
+}
+
+function openModal(id) {
+    const el = document.getElementById(id);
+    el.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+    const el = document.getElementById(id);
+    el.classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function handleOverlayClick(event, id) {
+    if (event.target.id === id) closeModal(id);
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        ['edit-modal', 'reserve-modal', 'paste-modal', 'add-class-modal',
+         'course-details-modal'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.classList.contains('open')) closeModal(id);
+        });
+    }
+});
+
+function markRead(notifId, el) {
+    csrfFetch(`/mark_notification_read/${notifId}`, {method:'POST'})
+        .then(() => {
+            if (el) {
+                el.classList.remove('unread');
+                el.style.opacity = '.6';
+            }
+        })
+        .catch(() => {});
+}
+</script>
+{% endblock %}

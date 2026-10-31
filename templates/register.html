@@ -1,0 +1,748 @@
+{% extends "base.html" %}
+
+{% block title %}ورود و ثبت‌نام | یونی‌نت{% endblock %}
+
+{% block content %}
+<style>
+/* ============ Page-specific styles — register.html ============ */
+
+.auth-wrap{
+    min-height:calc(100vh - var(--navbar-h) - 2rem);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:2rem 1rem;
+    position:relative;
+}
+.auth-wrap::before{
+    content:'';
+    position:fixed;
+    inset:0;
+    background:
+        radial-gradient(ellipse at 20% 50%, rgba(0,131,143,0.25) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(124,77,255,0.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(38,198,218,0.14) 0%, transparent 50%);
+    pointer-events:none;
+    z-index:0;
+}
+
+.auth-container{
+    max-width:460px; width:100%; position:relative; z-index:1;
+    animation:authContainerEnter .5s ease both;
+}
+@keyframes authContainerEnter{
+    from{ opacity:0; transform:translateY(18px); }
+    to{ opacity:1; transform:translateY(0); }
+}
+
+/* ---------- Header ---------- */
+.auth-header{ text-align:center; margin-bottom:2rem; }
+.auth-logo{
+    width:72px; height:72px;
+    border-radius:var(--radius-md);
+    background:linear-gradient(135deg, var(--brand-light), var(--brand-dark));
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 1.3rem;
+    box-shadow:0 10px 30px rgba(0,131,143,0.45);
+}
+.auth-logo .material-icons-round{ font-size:2.2rem; color:#fff; }
+.auth-title{
+    font-size:1.8rem; font-weight:800;
+    background:linear-gradient(90deg, #fff, var(--brand-light));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    margin-bottom:0.4rem;
+}
+.auth-subtitle{ color:var(--text-secondary); font-size:0.92rem; }
+
+/* ---------- Flash Alerts ---------- */
+.auth-alert{
+    display:flex; align-items:center; gap:0.6rem;
+    padding:0.85rem 1.1rem; border-radius:var(--radius-sm);
+    margin-bottom:1rem; font-size:0.9rem; font-weight:500;
+    border:1px solid transparent;
+}
+.auth-alert .material-icons-round{ font-size:1.15rem; flex-shrink:0; }
+.auth-alert-success{ background:rgba(46,204,113,0.1); border-color:rgba(46,204,113,0.25); color:var(--success); }
+.auth-alert-error{ background:rgba(255,92,114,0.1); border-color:rgba(255,92,114,0.25); color:var(--error); }
+.auth-alert-info{ background:rgba(38,198,218,0.1); border-color:rgba(38,198,218,0.25); color:var(--info); }
+
+/* ---------- Validation Summary ---------- */
+.validation-summary{
+    background:rgba(255,92,114,0.08);
+    border:1px solid rgba(255,92,114,0.3);
+    border-right:4px solid var(--error);
+    border-radius:var(--radius-sm);
+    padding:0.9rem 1.1rem;
+    margin-bottom:1.2rem;
+    animation:summarySlideIn 0.25s ease;
+}
+@keyframes summarySlideIn{
+    from{ opacity:0; transform:translateY(-8px); }
+    to{ opacity:1; transform:translateY(0); }
+}
+.validation-summary-header{
+    display:flex; align-items:center; gap:0.4rem;
+    color:var(--error); font-size:0.92rem; margin-bottom:0.55rem;
+}
+.validation-summary-header .material-icons-round{ font-size:1.15rem; }
+.validation-summary-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0.3rem; }
+.validation-summary-list li{
+    display:flex; align-items:center; gap:0.4rem;
+    font-size:0.86rem; color:var(--error);
+    cursor:pointer; border-radius:6px;
+    padding:0.2rem 0.4rem; transition:background 0.15s;
+}
+.validation-summary-list li:hover{ background:rgba(255,92,114,0.1); }
+.validation-summary-list li::before{ content:'•'; font-size:1rem; }
+
+/* ---------- Tabs ---------- */
+.auth-tabs{
+    display:flex;
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-md);
+    padding:5px; gap:4px;
+    margin-bottom:1.5rem;
+    backdrop-filter:blur(14px);
+}
+.auth-tab{
+    flex:1; text-align:center; padding:0.7rem 0.5rem;
+    cursor:pointer; border-radius:var(--radius-sm);
+    font-weight:600; font-size:0.9rem; color:var(--text-secondary);
+    transition:all 0.25s var(--ease);
+    display:flex; align-items:center; justify-content:center; gap:0.4rem;
+    user-select:none;
+}
+.auth-tab:hover{ color:var(--text-primary); background:var(--glass-bg-strong); }
+.auth-tab.active{
+    background:linear-gradient(135deg, var(--brand), var(--brand-dark));
+    color:#fff;
+    box-shadow:0 6px 18px rgba(0,131,143,0.4);
+}
+
+/* ---------- Tab Content ---------- */
+.auth-tab-content{ display:none; animation:authFadeIn 0.3s ease; }
+.auth-tab-content.active{ display:block; }
+@keyframes authFadeIn{
+    from{ opacity:0; transform:translateY(8px); }
+    to{ opacity:1; transform:translateY(0); }
+}
+
+/* ---------- Form Card ---------- */
+.auth-form-card{
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg);
+    padding:1.5rem;
+    backdrop-filter:blur(20px) saturate(140%);
+    -webkit-backdrop-filter:blur(20px) saturate(140%);
+    box-shadow:var(--shadow-glass);
+    transition: background var(--transition), border-color var(--transition);
+}
+.form-section-title{
+    display:flex; align-items:center; gap:0.5rem;
+    font-size:1.1rem; font-weight:700; color:var(--text-primary);
+    margin-bottom:1.5rem; padding-bottom:0.85rem;
+    border-bottom:1px solid var(--glass-border);
+}
+.form-section-title .material-icons-round{ font-size:1.25rem; color:var(--brand-light); }
+
+/* ---------- Form Elements ---------- */
+.form-group{ margin-bottom:1.2rem; }
+.form-label{
+    display:block; font-size:0.88rem; font-weight:600;
+    color:var(--text-secondary); margin-bottom:0.5rem;
+}
+.form-control, .form-select{
+    width:100%;
+    background:var(--input-bg);
+    border:1.5px solid var(--glass-border-strong);
+    border-radius:var(--radius-sm);
+    padding:0.75rem 1rem;
+    color:var(--text-primary);
+    font-family:'Vazirmatn', sans-serif;
+    font-size:0.95rem;
+    transition:border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.form-control::placeholder{ color:var(--text-muted); }
+.form-control:focus, .form-select:focus{
+    outline:none;
+    border-color:var(--brand-light);
+    background:rgba(255,255,255,0.06);
+    box-shadow:0 0 0 3px rgba(38,198,218,0.15);
+}
+.form-select option{ background:var(--bg-1); color:var(--text-primary); }
+
+.input-with-toggle{ position:relative; display:flex; align-items:center; }
+.input-with-toggle .form-control{ padding-left:2.75rem; }
+.toggle-password-btn{
+    position:absolute; left:0.6rem;
+    background:none; border:none; cursor:pointer;
+    color:var(--text-secondary); padding:0.25rem;
+    display:flex; align-items:center;
+    border-radius:50%; transition:color 0.2s;
+}
+.toggle-password-btn:hover{ color:var(--brand-light); }
+.toggle-password-btn .material-icons-round{ font-size:1.2rem; }
+
+.input-error{ border-color:var(--error) !important; box-shadow:0 0 0 3px rgba(255,92,114,0.15) !important; }
+.input-error.shake{ animation:shakeInput 0.35s ease; }
+@keyframes shakeInput{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-5px); }
+    40%{ transform:translateX(5px); }
+    60%{ transform:translateX(-4px); }
+    80%{ transform:translateX(4px); }
+}
+.field-error{
+    display:flex; align-items:center; gap:0.3rem;
+    color:var(--error); font-size:0.82rem; margin-top:0.4rem;
+}
+.field-error .material-icons-round{ font-size:1rem; }
+
+.field-hint{
+    display:flex; align-items:center; gap:0.3rem;
+    color:var(--text-muted); font-size:0.78rem; margin-top:0.4rem;
+}
+.field-hint .material-icons-round{ font-size:0.95rem; }
+
+/* ---------- Submit Button ---------- */
+.auth-submit-btn{
+    width:100%; margin-top:0.5rem;
+    padding:0.85rem; font-size:1rem; font-weight:700;
+    border-radius:var(--radius-pill); justify-content:center;
+    display:flex; align-items:center; gap:0.5rem;
+    background:linear-gradient(135deg, var(--brand-light), var(--brand));
+    color:#03161A; border:none; cursor:pointer;
+    box-shadow:0 8px 24px rgba(38,198,218,0.35);
+    transition:transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+.auth-submit-btn:hover{ transform:translateY(-2px); box-shadow:0 12px 30px rgba(38,198,218,0.5); }
+.auth-submit-btn .material-icons-round{ font-size:1.2rem; }
+
+/* ---------- Switch Hint ---------- */
+.auth-switch-hint{
+    text-align:center; margin-top:1.3rem;
+    font-size:0.88rem; color:var(--text-secondary);
+}
+.auth-switch-hint a{ color:var(--brand-light); font-weight:600; }
+.auth-switch-hint a:hover{ text-decoration:underline; }
+</style>
+
+<div class="auth-wrap">
+<div class="auth-ambient" aria-hidden="true">
+    <span class="auth-ambient-icon auth-ambient-icon-one"><span class="material-icons-round">school</span></span>
+    <span class="auth-ambient-icon auth-ambient-icon-two"><span class="material-icons-round">auto_stories</span></span>
+    <span class="auth-ambient-line"></span>
+</div>
+<div class="auth-container">
+
+    <div class="auth-header">
+        <div class="auth-logo">
+            <span class="material-icons-round">school</span>
+        </div>
+        <h1 class="auth-title">به یونی‌نت خوش آمدید</h1>
+        <p class="auth-subtitle">پلتفرم یکپارچه دانشجویی</p>
+    </div>
+
+    <!-- نمایش پیام‌های flash از سرور -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="auth-alert auth-alert-{{ category }}">
+                <span class="material-icons-round">
+                    {% if category == 'success' %}check_circle
+                    {% elif category == 'error' %}error
+                    {% else %}info{% endif %}
+                </span>
+                <span>{{ message }}</span>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- تب‌های انتخاب فرم -->
+    <div class="auth-tabs" role="tablist" aria-label="انتخاب ورود یا ثبت‌نام">
+        <button type="button" class="auth-tab active" id="tab-btn-register" role="tab"
+                aria-selected="true" aria-controls="register-tab" tabindex="0"
+                onclick="switchTab('register', this)">
+            <span class="material-icons-round">person_add</span>
+            <span>ثبت‌نام</span>
+        </button>
+        <button type="button" class="auth-tab" id="tab-btn-login" role="tab"
+                aria-selected="false" aria-controls="login-tab" tabindex="-1"
+                onclick="switchTab('login', this)">
+            <span class="material-icons-round">login</span>
+            <span>ورود</span>
+        </button>
+    </div>
+
+    <!-- ===== فرم ثبت‌نام — فقط شماره دانشجویی + کد ملی ===== -->
+    <div id="register-tab" class="auth-tab-content active" role="tabpanel" aria-labelledby="tab-btn-register" aria-hidden="false">
+        <div class="glass-card auth-form-card">
+            <h2 class="form-section-title">
+                <span class="material-icons-round">how_to_reg</span>
+                ایجاد حساب کاربری
+            </h2>
+
+            <div class="validation-summary" id="reg-validation-summary" style="display:none;" role="alert" aria-live="polite">
+                <div class="validation-summary-header">
+                    <span class="material-icons-round">warning_amber</span>
+                    <strong>لطفاً موارد زیر را تکمیل کنید:</strong>
+                </div>
+                <ul class="validation-summary-list" id="reg-validation-list"></ul>
+            </div>
+
+            <form method="POST" action="{{ url_for('register') }}" dir="rtl" novalidate
+                  id="register-form" onsubmit="return validateRegisterForm(event)">
+                {{ form.hidden_tag() }}
+
+                <!-- شماره دانشجویی -->
+                <div class="form-group">
+                    {{ form.student_id.label(class="form-label") }}
+                    {{ form.student_id(
+                        class="form-control" + (" input-error" if form.student_id.errors else ""),
+                        placeholder="۱۰ رقم (بدون خط تیره)",
+                        maxlength="10",
+                        inputmode="numeric",
+                        id="reg-student-id",
+                        autocomplete="username"
+                    ) }}
+                    {% if form.student_id.errors %}
+                        <div class="field-error" id="err-student-id">
+                            <span class="material-icons-round">error_outline</span>
+                            {{ form.student_id.errors[0] }}
+                        </div>
+                    {% else %}
+                        <div class="field-error" id="err-student-id" style="display:none;">
+                            <span class="material-icons-round">error_outline</span>
+                            <span></span>
+                        </div>
+                    {% endif %}
+                    <div class="field-hint">
+                        <span class="material-icons-round">info_outline</span>
+                        شماره دانشجویی شناسه یکتای شما در سیستم است.
+                    </div>
+                </div>
+
+                <!-- رمز عبور (کد ملی) -->
+                <div class="form-group">
+                    {{ form.password.label(class="form-label") }}
+                    <div class="input-with-toggle">
+                        {{ form.password(
+                            class="form-control" + (" input-error" if form.password.errors else ""),
+                            placeholder="کد ملی (۱۰ رقم)",
+                            maxlength="10",
+                            inputmode="numeric",
+                         id="reg-password",
+                         aria_describedby="reg-password-requirements",
+                         autocomplete="new-password"
+                        ) }}
+                        <button type="button" class="toggle-password-btn" onclick="togglePassword('reg-password', this)" tabindex="-1" title="نمایش/مخفی کردن رمز" aria-label="نمایش رمز">
+                            <span class="material-icons-round">visibility</span>
+                        </button>
+                    </div>
+                    {% if form.password.errors %}
+                        <div class="field-error" id="err-password">
+                            <span class="material-icons-round">error_outline</span>
+                            {{ form.password.errors[0] }}
+                        </div>
+                    {% else %}
+                        <div class="field-error" id="err-password" style="display:none;">
+                            <span class="material-icons-round">error_outline</span>
+                            <span></span>
+                        </div>
+                    {% endif %}
+                    <div class="password-requirements" id="reg-password-requirements">
+                        <strong>الزامات رمز عبور</strong>
+                        <ul>
+                            <li>رمز عبور باید دقیقاً ۱۰ رقم باشد.</li>
+                            <li>رمز عبور باید با کد ملی شما یکسان باشد.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- تکرار رمز عبور -->
+                <div class="form-group">
+                    {{ form.confirm_password.label(class="form-label") }}
+                    <div class="input-with-toggle">
+                        {{ form.confirm_password(
+                            class="form-control" + (" input-error" if form.confirm_password.errors else ""),
+                            placeholder="تکرار کد ملی",
+                            maxlength="10",
+                            inputmode="numeric",
+                            id="reg-confirm-password",
+                            autocomplete="new-password"
+                        ) }}
+                        <button type="button" class="toggle-password-btn" onclick="togglePassword('reg-confirm-password', this)" tabindex="-1" title="نمایش/مخفی کردن رمز" aria-label="نمایش رمز">
+                            <span class="material-icons-round">visibility</span>
+                        </button>
+                    </div>
+                    {% if form.confirm_password.errors %}
+                        <div class="field-error" id="err-confirm-password">
+                            <span class="material-icons-round">error_outline</span>
+                            {{ form.confirm_password.errors[0] }}
+                        </div>
+                    {% else %}
+                        <div class="field-error" id="err-confirm-password" style="display:none;">
+                            <span class="material-icons-round">error_outline</span>
+                            <span></span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="auth-submit-btn" id="reg-submit-btn">
+                    <span class="material-icons-round">person_add</span>
+                    ایجاد حساب کاربری
+                </button>
+                <div class="auth-status" id="reg-auth-status" role="status" aria-live="polite"></div>
+            </form>
+
+            <p class="auth-switch-hint">
+                قبلاً ثبت‌نام کرده‌اید؟
+                <a href="#" onclick="switchTab('login', document.getElementById('tab-btn-login')); return false;">وارد شوید</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- ===== فرم ورود ===== -->
+    <div id="login-tab" class="auth-tab-content" role="tabpanel" aria-labelledby="tab-btn-login" aria-hidden="true">
+        <div class="glass-card auth-form-card">
+            <h2 class="form-section-title">
+                <span class="material-icons-round">login</span>
+                ورود به سامانه
+            </h2>
+
+            <div class="validation-summary" id="login-validation-summary" style="display:none;" role="alert" aria-live="polite">
+                <div class="validation-summary-header">
+                    <span class="material-icons-round">warning_amber</span>
+                    <strong>لطفاً موارد زیر را تکمیل کنید:</strong>
+                </div>
+                <ul class="validation-summary-list" id="login-validation-list"></ul>
+            </div>
+
+            <form method="POST" action="{{ url_for('login') }}" dir="rtl" novalidate
+                  id="login-form" onsubmit="return validateLoginForm(event)">
+                {{ login_form.hidden_tag() }}
+
+                <div class="form-group">
+                    {{ login_form.student_id.label(class="form-label") }}
+                    {{ login_form.student_id(
+                        class="form-control" + (" input-error" if login_form.student_id.errors else ""),
+                         placeholder="شماره دانشجویی یا نام کاربری مدیریت",
+                        id="login-student-id",
+                        autocomplete="username"
+                    ) }}
+                    {% if login_form.student_id.errors %}
+                        <div class="field-error" id="err-login-student-id">
+                            <span class="material-icons-round">error_outline</span>
+                            {{ login_form.student_id.errors[0] }}
+                        </div>
+                    {% else %}
+                        <div class="field-error" id="err-login-student-id" style="display:none;">
+                            <span class="material-icons-round">error_outline</span>
+                            <span></span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ login_form.password.label(class="form-label") }}
+                    <div class="input-with-toggle">
+                        {{ login_form.password(
+                            class="form-control" + (" input-error" if login_form.password.errors else ""),
+                            placeholder="رمز عبور (کد ملی)",
+                            id="login-password",
+                            autocomplete="current-password"
+                        ) }}
+                        <button type="button" class="toggle-password-btn" onclick="togglePassword('login-password', this)" tabindex="-1" title="نمایش/مخفی کردن رمز" aria-label="نمایش رمز">
+                            <span class="material-icons-round">visibility</span>
+                        </button>
+                    </div>
+                    {% if login_form.password.errors %}
+                        <div class="field-error" id="err-login-password">
+                            <span class="material-icons-round">error_outline</span>
+                            {{ login_form.password.errors[0] }}
+                        </div>
+                    {% else %}
+                        <div class="field-error" id="err-login-password" style="display:none;">
+                            <span class="material-icons-round">error_outline</span>
+                            <span></span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="auth-submit-btn" id="login-submit-btn">
+                    <span class="material-icons-round">login</span>
+                    ورود به سامانه
+                </button>
+                <div class="auth-status" id="login-auth-status" role="status" aria-live="polite"></div>
+            </form>
+
+            <p class="auth-switch-hint">
+                حساب کاربری ندارید؟
+                <a href="#" onclick="switchTab('register', document.getElementById('tab-btn-register')); return false;">ثبت‌نام کنید</a>
+            </p>
+        </div>
+    </div>
+
+</div>
+</div><!-- /auth-wrap -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tabName, tabBtn) {
+    document.querySelectorAll('.auth-tab-content').forEach(el => {
+        el.classList.remove('active');
+        el.setAttribute('aria-hidden', 'true');
+    });
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+        const selected = tab === tabBtn;
+        tab.classList.toggle('active', selected);
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+    });
+    const content = document.getElementById(tabName + '-tab');
+    if (content) {
+        content.classList.add('active');
+        content.setAttribute('aria-hidden', 'false');
+    }
+    if (tabBtn) tabBtn.focus({ preventScroll: true });
+    hideSummary('reg-validation-summary');
+    hideSummary('login-validation-summary');
+    setAuthStatus('reg-auth-status', '');
+    setAuthStatus('login-auth-status', '');
+}
+
+function normalizePersianDigits(value) {
+    return String(value || '').replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)));
+}
+
+function setAuthStatus(statusId, message, state = '') {
+    const status = document.getElementById(statusId);
+    if (!status) return;
+    status.textContent = message;
+    status.dataset.state = state;
+}
+
+function setAuthLoading(formId, buttonId, statusId, message) {
+    const form = document.getElementById(formId);
+    const button = document.getElementById(buttonId);
+    if (!form || !button) return;
+    button.disabled = true;
+    button.classList.add('is-loading');
+    button.setAttribute('aria-busy', 'true');
+    form.setAttribute('aria-busy', 'true');
+    button.innerHTML = `<span class="material-icons-round">progress_activity</span>${message}`;
+    setAuthStatus(statusId, message);
+}
+
+function handleAuthTabKeydown(event) {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const tabs = Array.from(document.querySelectorAll('.auth-tab'));
+    const current = tabs.indexOf(document.activeElement);
+    if (current < 0) return;
+    event.preventDefault();
+    let next = current;
+    if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = tabs.length - 1;
+    else if (event.key === 'ArrowLeft') next = (current + 1) % tabs.length;
+    else next = (current - 1 + tabs.length) % tabs.length;
+    tabs[next].click();
+}
+
+function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const icon = btn.querySelector('.material-icons-round');
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.setAttribute('aria-label', 'پنهان کردن رمز');
+        if (icon) icon.textContent = 'visibility_off';
+    } else {
+        input.type = 'password';
+        btn.setAttribute('aria-label', 'نمایش رمز');
+        if (icon) icon.textContent = 'visibility';
+    }
+}
+
+function showFieldError(inputId, errId, message) {
+    const input = document.getElementById(inputId);
+    const errEl = document.getElementById(errId);
+    if (input) {
+        input.classList.add('input-error');
+        input.setAttribute('aria-invalid', 'true');
+        input.classList.remove('shake');
+        void input.offsetWidth;
+        input.classList.add('shake');
+        setTimeout(() => input.classList.remove('shake'), 400);
+    }
+    if (errEl) {
+        const span = errEl.querySelector('span');
+        if (span) span.textContent = message;
+        errEl.style.display = 'flex';
+    }
+}
+
+function clearFieldError(inputId, errId) {
+    const input = document.getElementById(inputId);
+    const errEl = document.getElementById(errId);
+    if (input) {
+        input.classList.remove('input-error');
+        input.setAttribute('aria-invalid', 'false');
+    }
+    if (errEl) errEl.style.display = 'none';
+}
+
+function showSummary(summaryId, listId, errors) {
+    const summary = document.getElementById(summaryId);
+    const list = document.getElementById(listId);
+    if (!summary || !list) return;
+    list.innerHTML = '';
+    errors.forEach(function(err) {
+        const li = document.createElement('li');
+        li.textContent = err.message;
+        li.addEventListener('click', function() {
+            const field = document.getElementById(err.inputId);
+            if (field) {
+                field.focus();
+                field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+        list.appendChild(li);
+    });
+    summary.style.display = 'block';
+    summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function hideSummary(summaryId) {
+    const el = document.getElementById(summaryId);
+    if (el) el.style.display = 'none';
+}
+
+/* ── اعتبارسنجی فرم ثبت‌نام — فقط شماره دانشجویی + کد ملی ── */
+function validateRegisterForm(event) {
+    clearFieldError('reg-student-id', 'err-student-id');
+    clearFieldError('reg-password', 'err-password');
+    clearFieldError('reg-confirm-password', 'err-confirm-password');
+    hideSummary('reg-validation-summary');
+    setAuthStatus('reg-auth-status', '');
+
+    const errors = [];
+    let isValid = true;
+
+    const studentId = document.getElementById('reg-student-id');
+    if (!studentId || !studentId.value.trim()) {
+        showFieldError('reg-student-id', 'err-student-id', 'شماره دانشجویی را وارد کنید');
+        errors.push({ message: 'شماره دانشجویی را وارد کنید', inputId: 'reg-student-id' });
+        isValid = false;
+    } else if (!/^\d{10}$/.test(normalizePersianDigits(studentId.value.trim()))) {
+        showFieldError('reg-student-id', 'err-student-id', 'شماره دانشجویی باید دقیقاً ۱۰ رقم باشد');
+        errors.push({ message: 'شماره دانشجویی باید دقیقاً ۱۰ رقم باشد', inputId: 'reg-student-id' });
+        isValid = false;
+    }
+
+    const password = document.getElementById('reg-password');
+    if (!password || !password.value) {
+        showFieldError('reg-password', 'err-password', 'کد ملی (رمز عبور) را وارد کنید');
+        errors.push({ message: 'کد ملی (رمز عبور) را وارد کنید', inputId: 'reg-password' });
+        isValid = false;
+    } else if (!/^\d{10}$/.test(normalizePersianDigits(password.value))) {
+        showFieldError('reg-password', 'err-password', 'رمز عبور باید دقیقاً ۱۰ رقم باشد');
+        errors.push({ message: 'رمز عبور باید دقیقاً ۱۰ رقم باشد', inputId: 'reg-password' });
+        isValid = false;
+    }
+
+    const confirmPassword = document.getElementById('reg-confirm-password');
+    if (!confirmPassword || !confirmPassword.value) {
+        showFieldError('reg-confirm-password', 'err-confirm-password', 'تکرار رمز عبور را وارد کنید');
+        errors.push({ message: 'تکرار رمز عبور را وارد کنید', inputId: 'reg-confirm-password' });
+        isValid = false;
+    } else if (password && normalizePersianDigits(confirmPassword.value) !== normalizePersianDigits(password.value)) {
+        showFieldError('reg-confirm-password', 'err-confirm-password', 'رمز عبور و تکرار آن مطابقت ندارند');
+        errors.push({ message: 'رمز عبور و تکرار آن مطابقت ندارند', inputId: 'reg-confirm-password' });
+        isValid = false;
+    }
+
+    if (!isValid) {
+        event.preventDefault();
+        setAuthStatus('reg-auth-status', 'لطفاً خطاهای فرم را برطرف کنید.', 'error');
+        showSummary('reg-validation-summary', 'reg-validation-list', errors);
+        return false;
+    }
+    setAuthLoading('register-form', 'reg-submit-btn', 'reg-auth-status', 'در حال ایجاد حساب کاربری...');
+    return true;
+}
+
+function validateLoginForm(event) {
+    clearFieldError('login-student-id', 'err-login-student-id');
+    clearFieldError('login-password', 'err-login-password');
+    hideSummary('login-validation-summary');
+    setAuthStatus('login-auth-status', '');
+
+    const errors = [];
+    let isValid = true;
+
+    const studentId = document.getElementById('login-student-id');
+    if (!studentId || !studentId.value.trim()) {
+        showFieldError('login-student-id', 'err-login-student-id', 'شماره دانشجویی را وارد کنید');
+        errors.push({ message: 'شماره دانشجویی را وارد کنید', inputId: 'login-student-id' });
+        isValid = false;
+    }
+
+    const password = document.getElementById('login-password');
+    if (!password || !password.value) {
+        showFieldError('login-password', 'err-login-password', 'رمز عبور را وارد کنید');
+        errors.push({ message: 'رمز عبور را وارد کنید', inputId: 'login-password' });
+        isValid = false;
+    }
+
+    if (!isValid) {
+        event.preventDefault();
+        setAuthStatus('login-auth-status', 'لطفاً اطلاعات ورود را کامل کنید.', 'error');
+        showSummary('login-validation-summary', 'login-validation-list', errors);
+        return false;
+    }
+    setAuthLoading('login-form', 'login-submit-btn', 'login-auth-status', 'در حال ورود به سامانه...');
+    return true;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+        tab.addEventListener('keydown', handleAuthTabKeydown);
+    });
+    document.querySelectorAll('.input-error').forEach(input => input.setAttribute('aria-invalid', 'true'));
+    [
+        ['reg-student-id',       'err-student-id'],
+        ['reg-password',         'err-password'],
+        ['reg-confirm-password', 'err-confirm-password'],
+    ].forEach(function(pair) {
+        var input = document.getElementById(pair[0]);
+        if (!input) return;
+        input.addEventListener('input', function() {
+            clearFieldError(pair[0], pair[1]);
+        });
+    });
+
+    [
+        ['login-student-id', 'err-login-student-id'],
+        ['login-password',   'err-login-password'],
+    ].forEach(function(pair) {
+        var input = document.getElementById(pair[0]);
+        if (!input) return;
+        input.addEventListener('input', function() {
+            clearFieldError(pair[0], pair[1]);
+        });
+    });
+
+    {% if login_form.errors %}
+        switchTab('login', document.getElementById('tab-btn-login'));
+    {% endif %}
+
+    {% if form.errors %}
+        switchTab('register', document.getElementById('tab-btn-register'));
+    {% endif %}
+});
+</script>
+{% endblock %}

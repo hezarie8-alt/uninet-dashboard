@@ -1,0 +1,1395 @@
+/* ============================================================
+   CSS Variables & Theming
+   base.html defines :root (dark default) and html.light-mode (light).
+   Here we define chat-specific vars and legacy aliases ONLY.
+   ============================================================ */
+
+:root {
+    /* Brand colors — dark mode defaults */
+    --primary-color: #4fb3bf;
+    --primary-light: #80cbc4;
+    --primary-dark: #00838f;
+    --secondary-color: #455a64;
+
+    --text-on-primary: #121212;
+    --border-color: #3a3b3c;
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+
+    /* Chat theme variables (dark defaults) */
+    --chat-bg: #0d1117;
+    --chat-bg-pattern: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v-2h4v4h2v-4h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4v-2H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    --chat-sent-bg: linear-gradient(135deg, #00838f, #005662);
+    --chat-sent-color: #ffffff;
+    --chat-received-bg: #2d2f31;
+    --chat-received-border: 1px solid #3a3b3c;
+    --chat-sidebar-bg: #1c1e21;
+    --chat-header-bg: #242526;
+    --chat-input-bg: #242526;
+}
+
+html.light-mode,
+body.light-mode {
+    --primary-color: #00838f;
+    --primary-light: #4fb3bf;
+    --primary-dark: #005662;
+    --secondary-color: #546e7a;
+
+    --text-on-primary: #ffffff;
+    --border-color: #e2e8f0;
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+
+    --chat-bg: #f0f2f5;
+    --chat-bg-pattern: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v-2h4v4h2v-4h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4v-2H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    --chat-sent-bg: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    --chat-sent-color: #ffffff;
+    --chat-received-bg: var(--surface);
+    --chat-received-border: 1px solid var(--border-color);
+    --chat-sidebar-bg: var(--surface);
+    --chat-header-bg: var(--surface);
+    --chat-input-bg: var(--surface);
+}
+
+/* ============================================================
+   Element-specific styles (dark is default, light overrides)
+   ============================================================ */
+.form-control,
+.form-select { background-color: #3a3b3c; color: var(--text-primary); border-color: #4a4b4c; }
+.modal-content,
+.modal-box > div { background-color: var(--surface); color: var(--text-primary); }
+input, textarea, select { background-color: #3a3b3c !important; color: var(--text-primary) !important; border-color: #4a4b4c !important; }
+.dropdown-menu { background-color: #2d2f31; border-color: #3a3b3c; }
+.dropdown-item { color: var(--text-primary); }
+.dropdown-item:hover { background-color: #3a3b3c; }
+.schedule-cell { background-color: #242526; }
+.schedule-header, .schedule-time { background-color: #1c1e21; }
+.convo-item:hover { background-color: #2d2f31; }
+.convo-item.active { background-color: rgba(79,179,191,0.15); }
+.channel-msg-card { background-color: #2d2f31; border-color: #3a3b3c; }
+.group-msg-item { background-color: #2d2f31; }
+table th { background-color: #2d2f31; }
+table td { border-color: #3a3b3c; }
+.btn-outline { border-color: #4a4b4c; color: var(--text-primary); }
+.btn-outline:hover { background-color: #3a3b3c; }
+.hero { background: linear-gradient(135deg, #1c2732 0%, #0d1117 100%); }
+.features-section { background-color: #1c1e21; }
+.chat-empty { color: var(--text-secondary); }
+.tab-btn.active { border-bottom-color: var(--primary-color); color: var(--primary-color); }
+.section-card { background-color: var(--surface); }
+.deadline-card { background-color: #2d2f31; border-color: #3a3b3c; }
+.resource-card { background-color: #2d2f31; }
+.cancelled-badge { background-color: rgba(239,83,80,0.2); }
+
+/* Light mode — element overrides */
+html.light-mode .form-control,
+html.light-mode .form-select,
+body.light-mode .form-control,
+body.light-mode .form-select { background-color: var(--input-bg, rgba(15,23,42,0.035)); color: var(--text-primary); border-color: var(--glass-border-strong); }
+html.light-mode input,
+html.light-mode textarea,
+html.light-mode select,
+body.light-mode input,
+body.light-mode textarea,
+body.light-mode select { background-color: var(--input-bg, rgba(15,23,42,0.035)) !important; color: var(--text-primary) !important; border-color: var(--glass-border-strong) !important; }
+html.light-mode .dropdown-menu,
+body.light-mode .dropdown-menu { background-color: var(--surface); border-color: var(--border-color); }
+html.light-mode .schedule-cell,
+body.light-mode .schedule-cell { background-color: var(--surface); }
+html.light-mode .schedule-header,
+html.light-mode .schedule-time,
+body.light-mode .schedule-header,
+body.light-mode .schedule-time { background-color: var(--bg-2, #F5F7FA); }
+html.light-mode .convo-item:hover,
+body.light-mode .convo-item:hover { background-color: var(--glass-bg-strong); }
+html.light-mode .convo-item.active,
+body.light-mode .convo-item.active { background-color: rgba(0,131,143,0.08); }
+html.light-mode .channel-msg-card,
+body.light-mode .channel-msg-card { background-color: var(--surface); border-color: var(--border-color); }
+html.light-mode .group-msg-item,
+body.light-mode .group-msg-item { background-color: transparent; }
+html.light-mode table th,
+body.light-mode table th { background-color: var(--bg-2, #F5F7FA); }
+html.light-mode table td,
+body.light-mode table td { border-color: var(--border-color); }
+html.light-mode .btn-outline,
+body.light-mode .btn-outline { border-color: var(--border-color); color: var(--text-primary); }
+html.light-mode .btn-outline:hover,
+body.light-mode .btn-outline:hover { background-color: var(--glass-bg-strong); }
+html.light-mode .hero,
+body.light-mode .hero { background: linear-gradient(135deg, var(--bg-2) 0%, var(--bg-1) 100%); }
+html.light-mode .features-section,
+body.light-mode .features-section { background-color: var(--bg-1, #FFFFFF); }
+html.light-mode .tab-btn.active,
+body.light-mode .tab-btn.active { border-bottom-color: var(--primary-color); color: var(--primary-color); }
+html.light-mode .section-card,
+body.light-mode .section-card { background-color: var(--surface); }
+html.light-mode .deadline-card,
+body.light-mode .deadline-card { background-color: var(--surface); border-color: var(--border-color); }
+html.light-mode .resource-card,
+body.light-mode .resource-card { background-color: var(--surface); }
+html.light-mode .cancelled-badge,
+body.light-mode .cancelled-badge { background-color: rgba(220,38,38,0.1); }
+
+/* ============================================================
+   Chat Themes — ۱۰+ تم برای پیام‌رسان
+   ============================================================ */
+
+/* Theme 1: default (پیش‌فرض — تعریف شده در :root) */
+
+/* Theme 2: ocean */
+.chat-theme-ocean { --chat-bg: #e8f4f8; --chat-sent-bg: linear-gradient(135deg, #0277bd, #01579b); --chat-sent-color: #fff; --chat-received-bg: #ffffff; }
+.chat-theme-ocean .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%230277bd' fill-opacity='0.04'%3E%3Cpath d='M0 40 Q20 20 40 40 Q60 60 80 40 L80 80 L0 80Z'/%3E%3C/g%3E%3C/svg%3E"); }
+.chat-theme-ocean .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* Theme 3: forest */
+.chat-theme-forest { --chat-bg: #e8f5e9; --chat-sent-bg: linear-gradient(135deg, #2e7d32, #1b5e20); --chat-sent-color: #fff; --chat-received-bg: #f9fbe7; }
+.chat-theme-forest .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%232e7d32' fill-opacity='0.04'%3E%3Cpath d='M30 0 L45 30 L60 60 L0 60 L15 30Z'/%3E%3C/g%3E%3C/svg%3E"); }
+.chat-theme-forest .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* Theme 4: sunset */
+.chat-theme-sunset { --chat-bg: #fff3e0; --chat-sent-bg: linear-gradient(135deg, #e64a19, #bf360c); --chat-sent-color: #fff; --chat-received-bg: #ffe0b2; }
+.chat-theme-sunset .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='100' height='50' viewBox='0 0 100 50' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e64a19' fill-opacity='0.04'%3E%3Cellipse cx='50' cy='50' rx='50' ry='30'/%3E%3C/g%3E%3C/svg%3E"); }
+.chat-theme-sunset .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* Theme 5: midnight */
+.chat-theme-midnight { --chat-bg: #0a0e1a; --chat-sent-bg: linear-gradient(135deg, #3949ab, #1a237e); --chat-sent-color: #fff; --chat-received-bg: #1a1f2e; }
+.chat-theme-midnight .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='1' fill='%23ffffff' fill-opacity='0.3'/%3E%3Ccircle cx='20' cy='20' r='0.5' fill='%23ffffff' fill-opacity='0.2'/%3E%3Ccircle cx='80' cy='30' r='0.8' fill='%23ffffff' fill-opacity='0.25'/%3E%3Ccircle cx='10' cy='70' r='0.6' fill='%23ffffff' fill-opacity='0.2'/%3E%3Ccircle cx='90' cy='80' r='1' fill='%23ffffff' fill-opacity='0.15'/%3E%3C/svg%3E"); }
+.chat-theme-midnight .chat-messages-active .message-wrapper.received .message-bubble { background-color: #1a1f2e; color: #e0e0e0; border-color: #2a3050; }
+.chat-theme-midnight .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+.chat-theme-midnight .chat-sidebar { background-color: #0f1320; }
+.chat-theme-midnight .convo-item { border-color: #1a1f2e; }
+.chat-theme-midnight .chat-header-active,
+.chat-theme-midnight .chat-input-area { background-color: #0f1320; border-color: #1a1f2e; }
+.chat-theme-midnight .chat-input-area input[type="text"] { background-color: #1a1f2e; color: #e0e0e0; border-color: #2a3050; }
+.chat-theme-midnight .convo-name { color: #e0e0e0; }
+.chat-theme-midnight .convo-msg { color: #8899aa; }
+
+/* Theme 6: rose */
+.chat-theme-rose { --chat-bg: #fce4ec; --chat-sent-bg: linear-gradient(135deg, #e91e63, #880e4f); --chat-sent-color: #fff; --chat-received-bg: #fff; }
+.chat-theme-rose .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e91e63' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/svg%3E"); }
+.chat-theme-rose .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* Theme 7: aurora */
+.chat-theme-aurora { --chat-bg: #f3e5f5; --chat-sent-bg: linear-gradient(135deg, #7b1fa2, #4a148c); --chat-sent-color: #fff; --chat-received-bg: #ede7f6; }
+.chat-theme-aurora .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='120' height='60' viewBox='0 0 120 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%237b1fa2' stroke-opacity='0.06' stroke-width='2'%3E%3Cpath d='M0 30 Q30 0 60 30 Q90 60 120 30'/%3E%3C/g%3E%3C/svg%3E"); }
+.chat-theme-aurora .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* Theme 8: desert */
+.chat-theme-desert { --chat-bg: #fdf6e3; --chat-sent-bg: linear-gradient(135deg, #795548, #4e342e); --chat-sent-color: #fff; --chat-received-bg: #fff8e1; }
+.chat-theme-desert .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23795548' fill-opacity='0.04'%3E%3Cpath d='M40 0 L80 40 L40 80 L0 40Z'/%3E%3C/g%3E%3C/svg%3E"); }
+.chat-theme-desert .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* Theme 9: lavender */
+.chat-theme-lavender { --chat-bg: #ede7f6; --chat-sent-bg: linear-gradient(135deg, #5e35b1, #311b92); --chat-sent-color: #fff; --chat-received-bg: #f5f0ff; }
+.chat-theme-lavender .chat-messages-active { background-color: var(--chat-bg); }
+.chat-theme-lavender .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* Theme 10: slate */
+.chat-theme-slate { --chat-bg: #eceff1; --chat-sent-bg: linear-gradient(135deg, #455a64, #263238); --chat-sent-color: #fff; --chat-received-bg: #ffffff; }
+.chat-theme-slate .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23455a64' fill-opacity='0.04'%3E%3Crect x='0' y='0' width='20' height='20'/%3E%3Crect x='20' y='20' width='20' height='20'/%3E%3C/g%3E%3C/svg%3E"); }
+.chat-theme-slate .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* Theme 11: sakura */
+.chat-theme-sakura { --chat-bg: #ffeef8; --chat-sent-bg: linear-gradient(135deg, #f48fb1, #c2185b); --chat-sent-color: #fff; --chat-received-bg: #fff0f7; }
+.chat-theme-sakura .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23f48fb1' fill-opacity='0.08'%3E%3Cellipse cx='40' cy='40' rx='15' ry='8' transform='rotate(0 40 40)'/%3E%3Cellipse cx='40' cy='40' rx='15' ry='8' transform='rotate(72 40 40)'/%3E%3Cellipse cx='40' cy='40' rx='15' ry='8' transform='rotate(144 40 40)'/%3E%3Cellipse cx='40' cy='40' rx='15' ry='8' transform='rotate(216 40 40)'/%3E%3Cellipse cx='40' cy='40' rx='15' ry='8' transform='rotate(288 40 40)'/%3E%3C/g%3E%3C/svg%3E"); }
+.chat-theme-sakura .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* Theme 12: neon */
+.chat-theme-neon { --chat-bg: #0a0a0a; --chat-sent-bg: linear-gradient(135deg, #00e676, #00c853); --chat-sent-color: #000; --chat-received-bg: #1a1a1a; }
+.chat-theme-neon .chat-messages-active { background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%2300e676' stroke-opacity='0.05' stroke-width='1'%3E%3Cline x1='0' y1='0' x2='100' y2='100'/%3E%3Cline x1='50' y1='0' x2='100' y2='50'/%3E%3Cline x1='0' y1='50' x2='50' y2='100'/%3E%3C/g%3E%3C/svg%3E"); }
+.chat-theme-neon .message-wrapper.received .message-bubble { background-color: #1a1a1a; color: #e0e0e0; border-color: #333; }
+.chat-theme-neon .chat-sidebar { background-color: #111111; }
+.chat-theme-neon .chat-header-active,
+.chat-theme-neon .chat-input-area { background-color: #111111; border-color: #222; }
+.chat-theme-neon .chat-input-area input[type="text"] { background-color: #1a1a1a; color: #e0e0e0; border-color: #333; }
+.chat-theme-neon .convo-name { color: #e0e0e0; }
+.chat-theme-neon .message-wrapper.sent .message-bubble { background: var(--chat-sent-bg); color: var(--chat-sent-color); }
+
+/* ============================================================
+   Global Reset & Base
+   ============================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Vazirmatn', sans-serif;
+    background-color: var(--background);
+    color: var(--text-primary);
+    line-height: 1.6;
+    direction: rtl;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+a { text-decoration: none; color: inherit; }
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* ============================================================
+   Navbar
+   ============================================================ */
+.navbar {
+    background-color: var(--primary-color);
+    color: var(--text-on-primary);
+    padding: 0.5rem 0;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    height: 60px;
+    transition: background-color 0.3s ease;
+}
+.navbar .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+}
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-on-primary) !important;
+}
+.navbar-nav {
+    display: flex;
+    list-style: none;
+    gap: 0.5rem;
+    align-items: center;
+}
+.navbar-nav .nav-link {
+    color: rgba(255,255,255,0.85) !important;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.navbar-nav .nav-link:hover { background-color: rgba(255,255,255,0.2); }
+
+/* Dark Mode Toggle Button */
+.dark-mode-toggle {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1rem;
+}
+.dark-mode-toggle:hover { background: rgba(255,255,255,0.25); transform: rotate(20deg); }
+
+/* User Dropdown */
+.user-dropdown { position: relative; cursor: pointer; padding: 0.5rem; border-radius: 50px; }
+.user-info { display: flex; align-items: center; gap: 0.5rem; color: var(--text-on-primary); }
+.user-avatar-nav {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background-color: var(--primary-light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+.user-avatar-nav img { width: 100%; height: 100%; object-fit: cover; }
+.dropdown-menu {
+    position: absolute; top: 100%; left: 0;
+    background-color: var(--surface);
+    min-width: 180px;
+    box-shadow: var(--shadow-lg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    opacity: 0; visibility: hidden;
+    transform: translateY(10px);
+    transition: all 0.2s;
+    z-index: 1001;
+    margin-top: 10px;
+}
+.user-dropdown:hover .dropdown-menu {
+    opacity: 1; visibility: visible; transform: translateY(0);
+}
+.dropdown-item {
+    padding: 0.75rem 1rem;
+    display: flex; align-items: center; gap: 0.75rem;
+    color: var(--text-primary);
+    transition: background 0.2s;
+}
+.dropdown-item:hover { background-color: var(--background); }
+.dropdown-item.danger { color: var(--error); border-top: 1px solid var(--border-color); }
+
+/* ============================================================
+   Hero Section
+   ============================================================ */
+.hero {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: var(--text-on-primary);
+    padding: 6rem 0;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s ease;
+}
+.hero-content {
+    position: relative; z-index: 1;
+    display: flex; align-items: center;
+    min-height: 400px;
+}
+.hero-text { flex: 1; padding-left: 2rem; }
+.hero-title { font-size: 3rem; font-weight: 700; margin-bottom: 1.5rem; }
+.hero-subtitle { font-size: 1.25rem; margin-bottom: 2rem; }
+.hero-image { flex: 1; display: flex; justify-content: center; align-items: center; }
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem; font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    font-family: inherit;
+}
+.btn-primary { background-color: var(--text-on-primary); color: var(--primary-color); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.btn-custom { background-color: var(--primary-color); color: var(--text-on-primary); }
+.btn-custom:hover { background-color: var(--primary-dark); }
+.btn-outline { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); }
+.btn-outline:hover { background-color: var(--background); }
+.btn-danger { background-color: var(--error); color: white; }
+.btn-danger:hover { opacity: 0.9; }
+.btn-success { background-color: var(--success); color: white; }
+
+/* ============================================================
+   Features Grid
+   ============================================================ */
+.features-section { padding: 5rem 0; background-color: var(--surface); transition: background-color 0.3s; }
+.section-title {
+    text-align: center; font-size: 2.5rem; font-weight: 700;
+    margin-bottom: 1rem; color: var(--primary-color);
+}
+.section-subtitle {
+    text-align: center; font-size: 1.2rem;
+    color: var(--text-secondary); margin-bottom: 3rem;
+    max-width: 700px; margin-left: auto; margin-right: auto;
+}
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+.feature-card {
+    background-color: var(--background); border-radius: 12px;
+    padding: 2rem; text-align: center; transition: all 0.3s;
+}
+.feature-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+.feature-icon { font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem; }
+.feature-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+
+/* ============================================================
+   Footer — فقط در index و about باید نمایش داشته باشه
+   در صفحات دیگر کلاس hide-footer به body اضافه می‌شود
+   ============================================================ */
+.footer {
+    background-color: var(--secondary-color);
+    color: var(--text-on-primary);
+    padding: 2rem 0;
+    margin-top: 4rem;
+    transition: background-color 0.3s;
+}
+.footer-section { margin-bottom: 1rem; }
+.footer-title { font-size: 1.1rem; margin-bottom: 1rem; }
+.footer-links { list-style: none; }
+.footer-links a {
+    color: rgba(255,255,255,0.8);
+    display: block; padding: 0.25rem 0;
+    transition: padding 0.2s;
+}
+.footer-links a:hover { padding-right: 10px; }
+
+/* پنهان کردن footer در صفحاتی که body.hide-footer دارند */
+body.hide-footer .footer { display: none !important; }
+
+/* ============================================================
+   Dashboard & Schedule
+   ============================================================ */
+.dashboard-container { padding: 2rem 0; }
+.schedule-card {
+    background-color: var(--surface);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    transition: background-color 0.3s;
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+.card-header h2 { font-size: 1.2rem; font-weight: 700; }
+
+.schedule-grid {
+    display: grid;
+    grid-template-columns: 80px repeat(5, 1fr);
+    gap: 1px;
+    background-color: var(--border-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    min-width: 600px;
+}
+.schedule-header,
+.schedule-time {
+    background-color: var(--background);
+    padding: 1rem;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
+}
+.schedule-cell {
+    background-color: var(--surface);
+    min-height: 80px;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+    vertical-align: top;
+}
+.schedule-cell:hover { background-color: var(--background); }
+.schedule-cell.has-class { border-right: 3px solid var(--primary-color); }
+
+.split-container { display: flex; flex-direction: column; height: 100%; width: 100%; }
+.split-half {
+    flex: 1;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    width: 100%;
+    border-bottom: 1px dashed var(--border-color);
+    font-size: 0.8rem; padding: 0.25rem;
+    border-radius: 4px;
+    margin-bottom: 2px;
+}
+.split-half:last-child { border-bottom: none; margin-bottom: 0; }
+.bg-odd  { background-color: rgba(33,150,243,0.12); }
+.bg-even { background-color: rgba(76,175,80,0.12); }
+.bg-all  { background-color: rgba(0,131,143,0.08); }
+.class-name { font-size: 0.85rem; font-weight: 600; color: var(--primary-color); margin-bottom: 0.25rem; }
+.class-location { font-size: 0.75rem; color: var(--text-secondary); }
+
+.dashboard-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 1rem;
+    background: var(--surface);
+    border-radius: 12px 12px 0 0;
+}
+
+/* ============================================================
+   Chat Layout — اصلاح کامل
+   ============================================================ */
+.chat-layout {
+    display: flex;
+    height: calc(100vh - 60px);
+    overflow: hidden;
+    background: var(--background);
+    transition: background-color 0.3s;
+}
+
+.chat-sidebar {
+    width: 300px;
+    min-width: 300px;
+    background-color: var(--chat-sidebar-bg, var(--surface));
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--background);
+    position: relative;
+    overflow: hidden;
+    transition: background-color 0.3s;
+}
+
+/* --- مسئله ۹: پنهان کردن "یک گفتگو را انتخاب کنید" وقتی چت فعال است --- */
+.chat-main.has-active-chat .chat-empty { display: none !important; }
+.chat-main.has-active-chat .chat-active-panel { display: flex !important; flex-direction: column; flex: 1; overflow: hidden; }
+.chat-active-panel { display: none; }
+
+/* Sidebar elements */
+.sidebar-header {
+    padding: 1rem 1.25rem;
+    background-color: var(--chat-sidebar-bg, var(--surface));
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.3s;
+}
+.conversation-list { flex: 1; overflow-y: auto; }
+.convo-item {
+    display: flex; align-items: center;
+    padding: 0.75rem 1rem; gap: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid var(--border-color);
+}
+.convo-item:hover { background-color: var(--background); }
+.convo-item.active { background-color: rgba(0,131,143,.08); }
+.convo-avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background-color: var(--primary-light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; color: white;
+    overflow: hidden; flex-shrink: 0; position: relative;
+}
+.convo-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.convo-info { flex: 1; overflow: hidden; }
+.convo-name { font-weight: 600; font-size: 0.95rem; }
+.convo-msg { font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Chat Header */
+.chat-header-active {
+    background-color: var(--chat-header-bg, var(--surface));
+    padding: 0.75rem 1.5rem;
+    display: flex; align-items: center; gap: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    z-index: 10;
+    transition: background-color 0.3s;
+}
+
+/* Messages Area */
+.chat-messages-active {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background-color: var(--chat-bg, #f0f2f5);
+    background-image: var(--chat-bg-pattern);
+    transition: background-color 0.3s;
+}
+
+/* ============================================================
+   Message Bubbles
+   ============================================================ */
+.message-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-width: 70%;
+}
+.message-wrapper.sent  { align-self: flex-end;  align-items: flex-end; }
+.message-wrapper.received { align-self: flex-start; align-items: flex-start; }
+
+.message-bubble {
+    padding: 0.65rem 1rem;
+    border-radius: 14px;
+    position: relative;
+    word-wrap: break-word;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    transition: background 0.3s;
+}
+.message-wrapper.sent .message-bubble {
+    background: var(--chat-sent-bg, linear-gradient(135deg, var(--primary-color), var(--primary-dark)));
+    color: var(--chat-sent-color, white);
+    border-bottom-left-radius: 4px;
+}
+.message-wrapper.received .message-bubble {
+    background-color: var(--chat-received-bg, var(--surface));
+    color: var(--text-primary);
+    border: var(--chat-received-border, 1px solid var(--border-color));
+    border-bottom-right-radius: 4px;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ساختار قدیمی backward compatibility */
+.message-bubble.sent {
+    background: var(--chat-sent-bg, linear-gradient(135deg, var(--primary-color), var(--primary-dark)));
+    color: var(--chat-sent-color, white);
+    align-self: flex-end;
+    border-bottom-left-radius: 4px;
+}
+.message-bubble.received {
+    background-color: var(--chat-received-bg, var(--surface));
+    color: var(--text-primary);
+    align-self: flex-start;
+    border: var(--chat-received-border, 1px solid var(--border-color));
+    border-bottom-right-radius: 4px;
+    box-shadow: var(--shadow-sm);
+}
+
+/* --- مسئله ۴: ساعت پیام ارسالی باید سفید باشد --- */
+.message-time {
+    font-size: 0.7rem;
+    margin-top: 0.3rem;
+    display: block;
+}
+.message-wrapper.sent .message-time {
+    text-align: left;
+    color: rgba(255, 255, 255, 0.85); /* سفید برای خوانایی روی پس‌زمینه رنگی */
+}
+.message-wrapper.received .message-time {
+    text-align: right;
+    color: var(--text-secondary);
+}
+/* ساختار قدیمی */
+.message-bubble.sent .message-time { color: rgba(255,255,255,0.85); text-align: right; }
+.message-bubble.received .message-time { color: var(--text-secondary); }
+
+/* Chat Input */
+.chat-input-area {
+    background-color: var(--chat-input-bg, var(--surface));
+    padding: 0.85rem 1.25rem;
+    display: flex; align-items: center; gap: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    transition: background-color 0.3s;
+}
+.chat-input-area input[type="text"] {
+    flex: 1;
+    padding: 0.7rem 1.1rem;
+    border-radius: 24px;
+    border: 1.5px solid var(--border-color);
+    background-color: var(--background);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, background-color 0.3s;
+}
+.chat-input-area input[type="text"]:focus { border-color: var(--primary-color); }
+.chat-input-area input:not([type]) {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border-radius: 24px;
+    border: 1px solid var(--border-color);
+    background-color: var(--background);
+    color: var(--text-primary);
+    font-family: inherit;
+    transition: background-color 0.3s;
+}
+.chat-input-area input:not([type]):focus { outline: none; border-color: var(--primary-color); }
+
+.send-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    border: none; cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 3px 10px rgba(0,131,143,.3);
+    flex-shrink: 0;
+}
+.send-btn:hover { transform: scale(1.08); box-shadow: 0 5px 14px rgba(0,131,143,.4); }
+.send-btn:active { transform: scale(0.95); }
+
+/* Empty State — مسئله ۹ */
+.chat-empty {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+    flex-direction: column; gap: 1rem;
+    transition: opacity 0.2s;
+}
+
+/* ============================================================
+   Chat Theme Selector Panel
+   ============================================================ */
+.chat-theme-panel {
+    position: absolute;
+    top: 70px; left: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 1rem;
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    display: none;
+    min-width: 280px;
+}
+.chat-theme-panel.open { display: block; }
+.chat-theme-panel h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text-primary); }
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+.theme-swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    overflow: hidden;
+    position: relative;
+}
+.theme-swatch:hover { transform: scale(1.05); border-color: var(--primary-color); }
+.theme-swatch.active { border-color: var(--primary-color); box-shadow: 0 0 0 2px var(--primary-light); }
+.theme-swatch[data-theme="default"] { background: linear-gradient(135deg, #00838f, #005662); }
+.theme-swatch[data-theme="ocean"] { background: linear-gradient(135deg, #0277bd, #01579b); }
+.theme-swatch[data-theme="forest"] { background: linear-gradient(135deg, #2e7d32, #1b5e20); }
+.theme-swatch[data-theme="sunset"] { background: linear-gradient(135deg, #e64a19, #bf360c); }
+.theme-swatch[data-theme="midnight"] { background: linear-gradient(135deg, #1a237e, #0d0d2e); }
+.theme-swatch[data-theme="rose"] { background: linear-gradient(135deg, #e91e63, #880e4f); }
+.theme-swatch[data-theme="aurora"] { background: linear-gradient(135deg, #7b1fa2, #4a148c); }
+.theme-swatch[data-theme="desert"] { background: linear-gradient(135deg, #795548, #4e342e); }
+.theme-swatch[data-theme="lavender"] { background: linear-gradient(135deg, #5e35b1, #311b92); }
+.theme-swatch[data-theme="slate"] { background: linear-gradient(135deg, #455a64, #263238); }
+.theme-swatch[data-theme="sakura"] { background: linear-gradient(135deg, #f48fb1, #c2185b); }
+.theme-swatch[data-theme="neon"] { background: linear-gradient(135deg, #00e676, #00c853); color: #000; text-shadow: none; }
+
+/* ============================================================
+   Group Chat — مسئله ۲: شبیه کانال (کشیده و حرفه‌ای)
+   ============================================================ */
+.group-chat-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--background);
+}
+
+.group-messages-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background-color: var(--background);
+}
+
+/* پیام‌های گروه — شبیه کانال، کشیده */
+.group-msg-item {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 0.6rem 0.75rem;
+    border-radius: 10px;
+    transition: background 0.15s;
+    width: 100%;
+}
+.group-msg-item:hover { background-color: rgba(0,0,0,0.03); }
+[data-theme="dark"] .group-msg-item:hover { background-color: rgba(255,255,255,0.04); }
+html.light-mode .group-msg-item:hover,
+body.light-mode .group-msg-item:hover { background-color: rgba(0,0,0,0.03); }
+
+.group-msg-item.own-message { flex-direction: row-reverse; }
+
+.group-msg-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background-color: var(--primary-light);
+    overflow: hidden; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 0.9rem; font-weight: 700;
+}
+.group-msg-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.group-msg-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.group-msg-item.own-message .group-msg-body { align-items: flex-end; }
+
+.group-msg-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+}
+.group-msg-item.own-message .group-msg-header { flex-direction: row-reverse; }
+
+.group-msg-sender {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+.group-msg-time {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.group-msg-bubble {
+    background-color: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 0 12px 12px 12px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    word-break: break-word;
+    max-width: 75%;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 0.3s;
+}
+.group-msg-item.own-message .group-msg-bubble {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 12px 0 12px 12px;
+}
+
+/* پیام حذف‌شده در گروه */
+.group-msg-bubble.deleted-msg {
+    font-style: italic;
+    color: var(--text-secondary);
+    background-color: var(--background);
+}
+
+/* Input گروه */
+.group-input-area {
+    background-color: var(--surface);
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.group-input-area input[type="text"] {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    border-radius: 24px;
+    border: 1.5px solid var(--border-color);
+    background-color: var(--background);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.group-input-area input[type="text"]:focus { border-color: var(--primary-color); }
+
+/* ============================================================
+   Channel Messages — کانال اطلاعیه
+   ============================================================ */
+.channel-messages-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background-color: var(--background);
+}
+
+.channel-msg-card {
+    background-color: var(--surface);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s, background-color 0.3s;
+    width: 100%;
+}
+.channel-msg-card:hover { box-shadow: var(--shadow-md); }
+.channel-msg-card.pinned { border-right: 3px solid var(--primary-color); }
+
+.channel-msg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+.channel-msg-sender {
+    font-weight: 700;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.channel-msg-content {
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.channel-msg-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* ============================================================
+   Deadline Page — مسئله ۱۰: چیدمان بهتر
+   ============================================================ */
+.deadline-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* تقویم — تمام عرض در ردیف اول */
+.deadline-calendar-wrap {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+/* ددلاین‌های نزدیک — ستون چپ ردیف دوم */
+.deadline-near-wrap {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+/* فرم افزودن — ستون راست ردیف دوم */
+.deadline-add-wrap {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+/* همه ددلاین‌ها — تمام عرض ردیف سوم */
+.deadline-all-wrap {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+/* کارت ددلاین */
+.deadline-card {
+    background: var(--background);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    border-right: 4px solid var(--primary-color);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.2s, background-color 0.3s;
+}
+.deadline-card:hover { transform: translateX(-2px); box-shadow: var(--shadow-sm); }
+.deadline-card.done { opacity: 0.55; }
+.deadline-card-info { flex: 1; min-width: 0; }
+.deadline-card-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.deadline-card-meta { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem; }
+.deadline-days-badge {
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.3rem 0.65rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.deadline-days-badge.urgent { background-color: rgba(239,83,80,0.15); color: var(--error); }
+.deadline-days-badge.normal { background-color: rgba(102,187,106,0.15); color: var(--success); }
+.deadline-days-badge.overdue { background-color: rgba(106,27,154,0.15); color: #CE93D8; }
+html.light-mode .deadline-days-badge.urgent,
+body.light-mode .deadline-days-badge.urgent { background-color: #ffebee; color: #c62828; }
+html.light-mode .deadline-days-badge.normal,
+body.light-mode .deadline-days-badge.normal { background-color: #e8f5e9; color: #2e7d32; }
+html.light-mode .deadline-days-badge.overdue,
+body.light-mode .deadline-days-badge.overdue { background-color: #f3e5f5; color: #6a1b9a; }
+
+/* ============================================================
+   Jalali Calendar — تعطیلات رسمی
+   ============================================================ */
+.jalali-calendar {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Vazirmatn', sans-serif;
+}
+.jalali-calendar th {
+    text-align: center;
+    padding: 0.6rem;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 0.85rem;
+}
+.jalali-calendar td {
+    text-align: center;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.15s;
+    vertical-align: top;
+    min-height: 50px;
+    font-size: 0.88rem;
+    position: relative;
+}
+.jalali-calendar td:hover { background-color: rgba(0,131,143,0.08); }
+.jalali-calendar td.today {
+    background-color: rgba(0,131,143,0.15);
+    font-weight: 700;
+    border: 2px solid var(--primary-color);
+}
+.jalali-calendar td.holiday {
+    background-color: rgba(198,40,40,0.15);
+    color: #c62828;
+    font-weight: 600;
+}
+html.light-mode .jalali-calendar td.holiday,
+body.light-mode .jalali-calendar td.holiday { background-color: #fff3f3; }
+.jalali-calendar td.has-deadline::after {
+    content: '';
+    display: block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    margin: 2px auto 0;
+}
+.holiday-tooltip {
+    font-size: 0.7rem;
+    color: #c62828;
+    display: block;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70px;
+}
+
+/* ============================================================
+   Forms & Cards (global)
+   ============================================================ */
+.form-card {
+    background-color: var(--surface);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    transition: background-color 0.3s;
+}
+.form-group { margin-bottom: 1.5rem; }
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.form-control,
+.form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--background);
+    color: var(--text-primary);
+    font-family: inherit;
+    transition: border 0.2s, background-color 0.3s, color 0.3s;
+}
+.form-control:focus,
+.form-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+.error-message { color: var(--error); font-size: 0.85rem; margin-top: 0.25rem; }
+
+/* Privacy settings save button */
+.privacy-save-btn {
+    margin-top: 1.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.privacy-save-btn:hover { background-color: var(--primary-dark); transform: translateY(-1px); }
+.privacy-save-btn:active { transform: translateY(0); }
+
+/* Modal */
+.modal-box {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 2000;
+    align-items: center; justify-content: center;
+    padding: 1rem;
+}
+.modal-box.open,
+.modal-box[style*="flex"] { display: flex; }
+
+/* ============================================================
+   Section Cards (used across pages)
+   ============================================================ */
+.section-card {
+    background-color: var(--surface);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+.section-card:hover { box-shadow: var(--shadow-lg); }
+
+/* Tabs */
+.tab-btn {
+    padding: 0.85rem 1.25rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 0.5rem;
+    white-space: nowrap;
+}
+.tab-btn.active {
+    border-bottom-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+.tab-btn:hover { color: var(--primary-color); }
+
+/* ============================================================
+   Resources Page
+   ============================================================ */
+.resource-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s, background-color 0.3s;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+.resource-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.resource-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    width: 50px; height: 50px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: rgba(0,131,143,0.1);
+    color: var(--primary-color);
+}
+.resource-info { flex: 1; min-width: 0; }
+.resource-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+.resource-meta { font-size: 0.8rem; color: var(--text-secondary); }
+
+/* ============================================================
+   Badges / Tags
+   ============================================================ */
+.badge {
+    display: inline-flex; align-items: center;
+    padding: 0.25rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.badge-primary { background-color: rgba(0,131,143,0.12); color: var(--primary-color); }
+.badge-error { background-color: rgba(183,28,28,0.12); color: var(--error); }
+.badge-success { background-color: rgba(46,125,50,0.12); color: var(--success); }
+.badge-warning { background-color: rgba(245,124,0,0.12); color: var(--warning); }
+.badge-info { background-color: rgba(2,136,209,0.12); color: var(--info); }
+
+/* لغو کلاس */
+.cancelled-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background-color: rgba(183,28,28,0.1);
+    color: var(--error);
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* آنلاین بودن */
+.online-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background-color: var(--success);
+    display: inline-block;
+    border: 2px solid var(--surface);
+}
+
+/* ============================================================
+   Admin Panel
+   ============================================================ */
+.admin-stat-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    text-align: center;
+    transition: all 0.3s, background-color 0.3s;
+}
+.admin-stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.admin-stat-number { font-size: 2.5rem; font-weight: 700; color: var(--primary-color); }
+.admin-stat-label { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem; }
+
+/* ============================================================
+   Notifications
+   ============================================================ */
+.notif-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    transition: background 0.2s;
+}
+.notif-item:hover { background-color: var(--background); }
+.notif-item.unread { background-color: rgba(0,131,143,0.04); }
+.notif-item.unread::before {
+    content: '';
+    display: block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    flex-shrink: 0;
+    margin-top: 6px;
+}
+
+/* ============================================================
+   Utilities
+   ============================================================ */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 0.75rem; }
+.mt-3 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 0.75rem; }
+.mb-3 { margin-bottom: 1rem; }
+.p-1 { padding: 0.5rem; }
+.p-2 { padding: 1rem; }
+.p-3 { padding: 1.5rem; }
+.d-flex { display: flex; }
+.align-center { align-items: center; }
+.gap-1 { gap: 0.5rem; }
+.gap-2 { gap: 1rem; }
+.flex-1 { flex: 1; }
+.text-muted { color: var(--text-secondary); }
+.text-primary-color { color: var(--primary-color); }
+.text-error { color: var(--error); }
+.text-success { color: var(--success); }
+.w-100 { width: 100%; }
+.hidden { display: none !important; }
+.visible { display: block !important; }
+.rounded { border-radius: 8px; }
+.rounded-full { border-radius: 50%; }
+.truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* انیمیشن ظاهر شدن */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.25s ease; }
+
+/* loading spinner */
+.spinner {
+    width: 24px; height: 24px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 768px) {
+    .hero-content { flex-direction: column; text-align: center; }
+    .hero-text { padding-left: 0; margin-bottom: 2rem; }
+    .hero-title { font-size: 2rem; }
+    .features-grid { grid-template-columns: 1fr; }
+
+    /* Chat mobile */
+    .chat-layout {
+        height: calc(100vh - 60px);
+        flex-direction: column;
+        position: relative;
+    }
+    .chat-sidebar {
+        width: 100%;
+        min-width: unset;
+        border-left: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .chat-main {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        z-index: 50;
+    }
+    .chat-main:not([style]) { display: none; }
+    .chat-main.active { display: flex; }
+
+    .message-wrapper { max-width: 88%; }
+    .group-msg-bubble { max-width: 90%; }
+
+    /* Deadline layout mobile */
+    .deadline-layout {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        gap: 1rem;
+    }
+    .deadline-calendar-wrap,
+    .deadline-all-wrap { grid-column: 1 / -1; }
+
+    /* Navbar */
+    .navbar-nav .nav-link span { display: none; }
+
+    .chat-theme-panel { left: 5px; right: 5px; min-width: unset; }
+}
+
+@media (max-width: 480px) {
+    .hero-title { font-size: 1.6rem; }
+    .section-title { font-size: 1.8rem; }
+    .form-card { padding: 1.25rem; }
+    .deadline-layout { padding: 0.75rem; gap: 0.75rem; }
+    .theme-grid { grid-template-columns: repeat(3, 1fr); }
+}

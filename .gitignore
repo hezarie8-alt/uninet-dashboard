@@ -1,0 +1,40 @@
+# Python / virtualenv
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Environment / secrets
+.env
+.env.*.local
+
+# Database (recreated automatically on first run — do not ship)
+instance/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite*
+*.bak*
+*.db.bak*
+
+# Logs
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+node_modules/
+Thumbs.db
+.mimocode/
+.opencode/
+
+# Scratch / one-off files (kept locally, not shipped)
+*_prompt*.md
+SECURITY_AUDIT.md
+MIGRATION_NOTES.md
+
+# User uploads (not shipped; created at runtime only if code touches them)
+static/uploads/

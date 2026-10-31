@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}یونی‌نت{% endblock %}</title>
+
+    <!-- ═══ Anti-flash: apply theme BEFORE any CSS renders ═══ -->
+    <script>
+        (function(){
+            if (localStorage.getItem('uninet-theme') === 'light') {
+                document.documentElement.classList.add('light-mode');
+            }
+        })();
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <!-- Scroll Animations CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/scroll-animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/glass-system.css') }}">
+
+    {% block head_extra %}{% endblock %}
+
+    <style>
+    /* ============================================================
+       RESET & BASE
+       ============================================================ */
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+    html { scroll-behavior:smooth; }
+
+    body {
+        font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+        background: var(--bg-0);
+        color: var(--text-primary);
+        min-height: 100vh;
+        direction: rtl;
+        line-height: 1.6;
+        overflow-x: hidden;
+        transition: background var(--transition), color var(--transition);
+    }
+
+    /* Background mesh gradient orbs */
+    body::before, body::after {
+        content: '';
+        position: fixed;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 0;
+        transition: background var(--transition), opacity var(--transition);
+    }
+    body::before {
+        width: 700px; height: 700px;
+        background: radial-gradient(circle, rgba(0,131,143,0.12) 0%, transparent 70%);
+        top: -250px; right: -180px;
+    }
+    body::after {
+        width: 550px; height: 550px;
+        background: radial-gradient(circle, rgba(124,77,255,0.09) 0%, transparent 70%);
+        bottom: -180px; left: -130px;
+    }
+    html.light-mode body::before,
+    body.light-mode::before {
+        background: radial-gradient(circle, rgba(0,131,143,0.07) 0%, transparent 70%);
+    }
+    html.light-mode body::after,
+    body.light-mode::after {
+        background: radial-gradient(circle, rgba(124,77,255,0.05) 0%, transparent 70%);
+    }
+
+    a { text-decoration: none; color: inherit; }
+
+    input, textarea, select, button {
+        font-family: inherit;
+        color: var(--text-primary);
+    }
+
+    /* ============================================================
+       SHARED FORM CONTROLS
+       ============================================================ */
+    .form-control, .form-select {
+        width: 100%;
+        background: var(--input-bg);
+        border: 1.5px solid var(--glass-border-strong);
+        border-radius: var(--radius-sm);
+        padding: 0.72rem 1rem;
+        color: var(--text-primary);
+        font-size: 0.92rem;
+        outline: none;
+        transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+    .form-control::placeholder { color: var(--text-muted); }
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--brand-light);
+        box-shadow: 0 0 0 3px rgba(38,198,218,0.15);
+        background: var(--glass-bg-strong);
+    }
+    .form-select option { background: var(--surface); color: var(--text-primary); }
+
+    /* ============================================================
+       SHARED BUTTONS
+       ============================================================ */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.68rem 1.3rem;
+        border-radius: var(--radius-pill);
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all var(--transition);
+        text-decoration: none;
+        white-space: nowrap;
+        line-height: 1.2;
+    }
+    .btn .material-icons-round { font-size: 1.1rem; }
+
+    .btn-custom {
+        background: linear-gradient(135deg, var(--brand-light), var(--brand));
+        color: var(--text-on-brand);
+        box-shadow: 0 4px 16px rgba(38,198,218,0.28);
+    }
+    .btn-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(38,198,218,0.44);
+    }
+    .btn-custom:active { transform: translateY(0); }
+
+    .btn-outline {
+        background: var(--glass-bg);
+        border-color: var(--glass-border-strong);
+        color: var(--text-primary);
+    }
+    .btn-outline:hover {
+        background: var(--glass-bg-hover);
+        border-color: var(--brand-light);
+        color: var(--brand-light);
+    }
+
+    .btn-sm { padding: 0.42rem 0.85rem; font-size: 0.82rem; }
+
+    /* ============================================================
+       GLASS CARD UTILITY
+       ============================================================ */
+    .glass-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        backdrop-filter: blur(18px) saturate(140%);
+        -webkit-backdrop-filter: blur(18px) saturate(140%);
+        box-shadow: var(--shadow-glass);
+        transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+    }
+
+    /* ============================================================
+       NAVBAR
+       ============================================================ */
+    .navbar {
+        position: fixed;
+        top: 0; right: 0; left: 0;
+        height: var(--navbar-h);
+        z-index: 1000;
+        backdrop-filter: blur(22px) saturate(160%);
+        -webkit-backdrop-filter: blur(22px) saturate(160%);
+        border-bottom: 1px solid var(--glass-border);
+        transition: background var(--transition), border-color var(--transition);
+    }
+    /* Dark navbar background */
+    .navbar { background: rgba(5,8,16,0.85); }
+    html.light-mode .navbar,
+    body.light-mode .navbar { background: rgba(238,242,247,0.90); }
+
+    .navbar-inner {
+        max-width: 1280px;
+        margin: 0 auto;
+        height: 100%;
+        padding: 0 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .navbar-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 800;
+        font-size: 1.05rem;
+        color: var(--brand-light);
+        text-decoration: none;
+        flex-shrink: 0;
+    }
+    .navbar-brand .material-icons-round { font-size: 1.3rem; }
+
+    .navbar-links {
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.4rem 0.72rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.86rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        transition: all var(--transition);
+        text-decoration: none;
+    }
+    .nav-link .material-icons-round { font-size: 1.1rem; }
+    .nav-link:hover {
+        background: var(--glass-bg-strong);
+        color: var(--text-primary);
+    }
+    .nav-link.active {
+        background: rgba(38,198,218,0.12);
+        color: var(--brand-light);
+    }
+
+    .navbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-shrink: 0;
+    }
+
+    /* Icon button */
+    .nav-icon-btn {
+        width: 34px; height: 34px;
+        border-radius: var(--radius-sm);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-secondary);
+        transition: all var(--transition);
+        position: relative;
+    }
+    .nav-icon-btn:hover {
+        background: var(--glass-bg-strong);
+        color: var(--text-primary);
+        border-color: var(--glass-border-strong);
+    }
+    .nav-icon-btn .material-icons-round { font-size: 1.1rem; }
+
+    /* Badge */
+    .nav-badge {
+        position: absolute;
+        top: -5px; left: -5px;
+        min-width: 17px; height: 17px;
+        padding: 0 4px;
+        border-radius: var(--radius-pill);
+        background: var(--error);
+        color: white;
+        font-size: 0.62rem;
+        font-weight: 800;
+        display: flex; align-items: center; justify-content: center;
+        border: 2px solid var(--bg-0);
+        transition: border-color var(--transition);
+        line-height: 1;
+    }
+    html.light-mode .nav-badge,
+    body.light-mode .nav-badge { border-color: var(--bg-0); }
+
+    /* User avatar */
+    .nav-avatar {
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--brand-light), var(--brand));
+        color: var(--text-on-brand);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 0.8rem;
+        cursor: pointer;
+        border: 2px solid var(--glass-border-strong);
+        transition: all var(--transition);
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .nav-avatar img { width:100%; height:100%; object-fit:cover; }
+    .nav-avatar:hover { border-color: var(--brand-light); transform: scale(1.05); }
+
+    /* Dropdown */
+    .nav-dropdown-wrap { position: relative; }
+
+    .nav-dropdown {
+        position: absolute;
+        top: calc(100% + 10px);
+        left: 0;
+        min-width: 210px;
+        background: var(--modal-bg);
+        border: 1px solid var(--modal-border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-8px) scale(0.97);
+        pointer-events: none;
+        transition: all 0.2s var(--ease);
+        z-index: 500;
+        backdrop-filter: blur(20px);
+    }
+    .nav-dropdown.open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+
+    .nav-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.72rem 1rem;
+        font-size: 0.88rem;
+        color: var(--text-primary);
+        transition: background var(--transition);
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        background: none;
+        width: 100%;
+        font-family: inherit;
+    }
+    .nav-dropdown-item .material-icons-round { font-size: 1.1rem; color: var(--text-secondary); }
+    .nav-dropdown-item:hover {
+        background: var(--glass-bg-strong);
+        color: var(--brand-light);
+    }
+    .nav-dropdown-item:hover .material-icons-round { color: var(--brand-light); }
+    .nav-dropdown-divider { height: 1px; background: var(--glass-border); margin: 0.25rem 0; }
+
+    /* Hamburger */
+    .nav-hamburger {
+        display: none;
+        width: 34px; height: 34px;
+        border-radius: var(--radius-sm);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        cursor: pointer;
+        align-items: center; justify-content: center;
+        color: var(--text-secondary);
+        transition: all var(--transition);
+    }
+    .nav-hamburger:hover { background: var(--glass-bg-strong); color: var(--text-primary); }
+
+    /* Mobile menu */
+    .nav-mobile-menu {
+        display: none;
+        position: fixed;
+        top: var(--navbar-h);
+        right: 0; left: 0;
+        background: var(--surface);
+        border-bottom: 1px solid var(--glass-border);
+        padding: 0.75rem;
+        flex-direction: column;
+        gap: 0.2rem;
+        z-index: 999;
+        box-shadow: var(--shadow-glass);
+        transition: background var(--transition);
+    }
+    .nav-mobile-menu.open { display: flex; }
+
+    .nav-mobile-link {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.72rem 1rem;
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: background var(--transition);
+        text-decoration: none;
+    }
+    .nav-mobile-link .material-icons-round { font-size: 1.15rem; color: var(--text-secondary); }
+    .nav-mobile-link:hover { background: var(--glass-bg-strong); }
+
+    @media (max-width: 768px) {
+        .navbar-links { display: none; }
+        .nav-hamburger { display: flex; }
+    }
+    @media (max-width: 480px) {
+        .navbar-inner { padding: 0 1rem; }
+    }
+
+    /* ============================================================
+       PAGE CONTENT
+       ============================================================ */
+    .page-content {
+        min-height: 100vh;
+        padding-top: calc(var(--navbar-h) + 1.5rem);
+        padding-bottom: 2.5rem;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding-right: 1.5rem;
+        padding-left: 1.5rem;
+        position: relative;
+        z-index: 1;
+    }
+    @media (max-width: 480px) {
+        .page-content { padding-right: 1rem; padding-left: 1rem; }
+    }
+
+    /* ============================================================
+       FIT-TO-VIEWPORT PAGES (dashboard, deadlines)
+       Pages that opt in via <body class="fit-viewport"> get a
+       fixed-height flex column instead of document flow, so inner
+       sections share the viewport and only lists scroll internally.
+       Desktop only — below 961px the normal scrolling flow returns.
+       ============================================================ */
+    @media (min-width: 961px) and (min-height: 560px) {
+        body.fit-viewport { overflow: hidden; height: 100vh; }
+        body.fit-viewport .page-content {
+            height: 100vh;
+            min-height: 0;
+            max-width: 1400px;
+            padding-top: var(--navbar-h);
+            padding-bottom: 0.6rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+    }
+
+    /* ============================================================
+       FLASH MESSAGES
+       ============================================================ */
+    .flash-container {
+        position: fixed;
+        top: calc(var(--navbar-h) + 0.6rem);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1100;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        max-width: min(460px, calc(100vw - 2rem));
+        width: 100%;
+        pointer-events: none;
+    }
+
+    .flash-msg {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.78rem 1.1rem;
+        border-radius: var(--radius-md);
+        font-size: 0.88rem;
+        font-weight: 600;
+        border: 1px solid transparent;
+        pointer-events: auto;
+        animation: flashIn 0.28s var(--ease);
+        box-shadow: var(--shadow-glass);
+        backdrop-filter: blur(14px);
+        /* IMPORTANT: use vars for both bg and text so light/dark both readable */
+    }
+
+    @keyframes flashIn {
+        from { opacity:0; transform:translateY(-6px); }
+        to   { opacity:1; transform:translateY(0); }
+    }
+
+    .flash-msg .material-icons-round { font-size: 1.15rem; flex-shrink: 0; }
+
+    .flash-success {
+        background: var(--success-bg);
+        border-color: var(--success);
+        color: var(--success);
+    }
+    .flash-error {
+        background: var(--error-bg);
+        border-color: var(--error);
+        color: var(--error);
+    }
+    .flash-info {
+        background: var(--info-bg);
+        border-color: var(--info);
+        color: var(--info);
+    }
+    .flash-warning {
+        background: var(--warning-bg);
+        border-color: var(--warning);
+        color: var(--warning);
+    }
+
+    .flash-close {
+        margin-right: auto;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: inherit;
+        opacity: 0.6;
+        display: flex; align-items: center;
+        border-radius: 50%;
+        padding: 2px;
+        transition: opacity var(--transition);
+    }
+    .flash-close:hover { opacity: 1; }
+    .flash-close .material-icons-round { font-size: 1rem; }
+
+    /* ============================================================
+       FOOTER
+       ============================================================ */
+    .site-footer {
+        border-top: 1px solid var(--glass-border);
+        padding: 1.5rem;
+        text-align: center;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        position: relative;
+        z-index: 1;
+        transition: border-color var(--transition), color var(--transition);
+    }
+
+    /* ============================================================
+       CONTAINER
+       ============================================================ */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* ============================================================
+       UTILITIES
+       ============================================================ */
+    .hidden { display: none !important; }
+
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .spin { animation: spin 1s linear infinite; display:inline-block; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+        background: var(--glass-border-strong);
+        border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ── Shared Animation Utilities ── */
+    .animate-fade-in {
+        animation: fadeIn var(--anim-normal) var(--ease) forwards;
+    }
+    .animate-slide-up {
+        opacity: 0;
+        transform: var(--anim-enter);
+        animation: slideUp var(--anim-normal) var(--ease) forwards;
+    }
+    .animate-scale-in {
+        opacity: 0;
+        transform: scale(0.95);
+        animation: scaleIn var(--anim-normal) var(--ease) forwards;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: var(--anim-enter); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .btn:active,
+    .nav-link:active,
+    .nav-icon-btn:active,
+    .feature-card:active,
+    .clickable-cell:active {
+        transform: translateY(1px);
+        transition: transform var(--motion-fast);
+    }
+
+    .modal-overlay.open .modal-card,
+    .dl-modal-overlay.open .dl-modal-card {
+        animation: modalIn var(--anim-normal) var(--ease);
+    }
+    @keyframes modalIn {
+        from { opacity: 0; transform: translateY(16px) scale(0.97); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .animate-fade-in,
+        .animate-slide-up,
+        .animate-scale-in {
+            animation: none !important;
+            opacity: 1;
+            transform: none;
+        }
+        .btn:active,
+        .nav-link:active,
+        .nav-icon-btn:active {
+            transform: none;
+        }
+    }
+    </style>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+<!-- ════════════════════════════════════════
+     NAVBAR
+════════════════════════════════════════ -->
+<nav class="navbar" role="navigation" aria-label="ناوبری اصلی">
+    <div class="navbar-inner">
+
+        <!-- Brand -->
+        <a href="{{ url_for('index') }}" class="navbar-brand">
+            <span class="material-icons-round">school</span>
+            یونی‌نت
+        </a>
+
+        {% if current_user %}
+        <!-- Desktop Links -->
+        <div class="navbar-links">
+            <a href="{{ url_for('dashboard') }}"
+               class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('dashboard') else '' }}">
+                <span class="material-icons-round">dashboard</span> داشبورد
+            </a>
+            {% if is_admin %}
+            <a href="{{ url_for('admin_dashboard') }}"
+               class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin') else '' }}">
+                <span class="material-icons-round">admin_panel_settings</span> مدیریت
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="navbar-actions">
+
+            <!-- Theme toggle -->
+            <button class="nav-icon-btn" id="theme-toggle-btn"
+                    onclick="toggleTheme()" title="تغییر تم" aria-label="تغییر تم">
+                <span class="material-icons-round" id="theme-icon">light_mode</span>
+            </button>
+
+            <!-- Notifications -->
+            <div class="nav-dropdown-wrap">
+                <button class="nav-icon-btn" id="notif-btn"
+                        onclick="toggleDropdown('notif-dropdown');loadNotifications();"
+                        title="اعلان‌ها" aria-label="اعلان‌ها"
+                        data-authenticated="{{ '1' if current_user else '0' }}">
+                    <span class="material-icons-round">notifications</span>
+                    <span class="nav-badge hidden" id="notif-badge">0</span>
+                </button>
+                <div class="nav-dropdown" id="notif-dropdown">
+                    <div style="padding:.75rem 1rem;font-weight:700;font-size:.88rem;border-bottom:1px solid var(--glass-border);color:var(--text-primary);">
+                        اعلان‌ها
+                    </div>
+                    <div id="notif-list" style="max-height:300px;overflow-y:auto;"></div>
+                    <div style="padding:.45rem;border-top:1px solid var(--glass-border);">
+                        <button onclick="markAllNotifRead()" class="nav-dropdown-item"
+                                style="justify-content:center;color:var(--brand-light);">
+                            <span class="material-icons-round">done_all</span> علامت‌گذاری همه
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User menu -->
+            <div class="nav-dropdown-wrap">
+                <div class="nav-avatar" onclick="toggleDropdown('user-dropdown')"
+                     title="{{ current_user.name }}" role="button" tabindex="0"
+                     onkeydown="if(event.key==='Enter')toggleDropdown('user-dropdown')">
+                    {% if current_user.pic and current_user.pic != 'default.jpg' %}
+                        <img src="{{ url_for('static', filename='uploads/profile_pics/' + current_user.pic) }}"
+                             onerror="this.style.display='none'"
+                             alt="{{ current_user.name }}">
+                    {% else %}
+                        {{ current_user.name[0] if current_user.name else '?' }}
+                    {% endif %}
+                </div>
+                <div class="nav-dropdown" id="user-dropdown">
+                    <div style="padding:.85rem 1rem;border-bottom:1px solid var(--glass-border);">
+                        <div style="font-weight:700;font-size:.9rem;color:var(--text-primary);">{{ current_user.name }}</div>
+                        <div style="font-size:.75rem;color:var(--text-muted);margin-top:.15rem;">
+                            {{ 'مدیر سیستم' if is_admin else 'دانشجو' }}
+                        </div>
+                    </div>
+                    <div class="nav-dropdown-divider"></div>
+                    <a href="{{ url_for('logout') }}" class="nav-dropdown-item"
+                       style="color:var(--error);">
+                        <span class="material-icons-round" style="color:var(--error);">logout</span> خروج
+                    </a>
+                </div>
+            </div>
+
+            <!-- Hamburger (mobile) -->
+            <button class="nav-hamburger" onclick="toggleMobileMenu()"
+                    aria-label="باز/بسته کردن منو" aria-expanded="false" id="hamburger-btn">
+                <span class="material-icons-round">menu</span>
+            </button>
+
+        </div>
+        {% else %}
+        <!-- Guest actions -->
+        <div class="navbar-actions">
+            <button class="nav-icon-btn" id="theme-toggle-btn"
+                    onclick="toggleTheme()" title="تغییر تم" aria-label="تغییر تم">
+                <span class="material-icons-round" id="theme-icon">light_mode</span>
+            </button>
+            <a href="{{ url_for('show_auth_page') }}" class="btn btn-custom"
+               style="padding:.5rem 1.1rem;font-size:.85rem;">
+                <span class="material-icons-round">login</span> ورود
+            </a>
+        </div>
+        {% endif %}
+
+    </div>
+</nav>
+
+<!-- Mobile Menu -->
+{% if current_user %}
+<div class="nav-mobile-menu" id="mobile-menu" role="navigation">
+    <a href="{{ url_for('dashboard') }}" class="nav-mobile-link">
+        <span class="material-icons-round">dashboard</span> داشبورد
+    </a>
+    {% if is_admin %}
+    <a href="{{ url_for('admin_dashboard') }}" class="nav-mobile-link">
+        <span class="material-icons-round">admin_panel_settings</span> مدیریت
+    </a>
+    {% endif %}
+    <hr style="border:none;border-top:1px solid var(--glass-border);margin:.25rem 0;">
+    <a href="{{ url_for('logout') }}" class="nav-mobile-link" style="color:var(--error);">
+        <span class="material-icons-round" style="color:var(--error);">logout</span> خروج
+    </a>
+</div>
+{% endif %}
+
+<!-- Flash Messages -->
+<div class="flash-container" id="flash-container" role="alert" aria-live="polite">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash-msg flash-{{ category }}">
+                <span class="material-icons-round">
+                    {% if category == 'success' %}check_circle
+                    {% elif category == 'error' %}error
+                    {% elif category == 'warning' %}warning
+                    {% else %}info{% endif %}
+                </span>
+                <span>{{ message }}</span>
+                <button class="flash-close" onclick="this.parentElement.remove()"
+                        aria-label="بستن">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<!-- Main Content -->
+<main class="page-content">
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Footer -->
+<footer class="site-footer" id="site-footer" style="display:none;">
+    <p>یونی‌نت — سامانه دیجیتال دانشجویی</p>
+</footer>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/glass-system.css') }}">
+
+<!-- ════════════════════════════════════════
+     GLOBAL SCRIPTS
+════════════════════════════════════════ -->
+<script>
+/* ────────────────────────────────────────────
+   Security Utilities
+──────────────────────────────────────────── */
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
+function escapeJs(str) {
+    return String(str ?? '').replace(/[\\&<>"']/g, character => ({
+        '\\': '\\\\',
+        '&': '\\u0026',
+        '<': '\\u003c',
+        '>': '\\u003e',
+        '"': '\\u0022',
+        "'": '\\u0027'
+    }[character]));
+}
+
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+function csrfFetch(url, options = {}) {
+    options.headers = options.headers || {};
+    if (options.method && options.method.toUpperCase() !== 'GET') {
+        options.headers['X-CSRFToken'] = getCsrfToken();
+    }
+    return fetch(url, options);
+}
+
+/* ────────────────────────────────────────────
+   Theme System
+   - Anti-flash: html class set in <head> IIFE
+   - Toggle: sets BOTH html + body classes
+   - Keyboard shortcut: Ctrl+Shift+T
+──────────────────────────────────────────── */
+function _isLight() {
+    return document.documentElement.classList.contains('light-mode');
+}
+
+function applyTheme(light) {
+    document.documentElement.classList.toggle('light-mode', light);
+    document.body.classList.toggle('light-mode', light);
+    localStorage.setItem('uninet-theme', light ? 'light' : 'dark');
+    _updateThemeIcon();
+}
+
+function toggleTheme() {
+    applyTheme(!_isLight());
+}
+
+function _updateThemeIcon() {
+    const icon = document.getElementById('theme-icon');
+    if (icon) icon.textContent = _isLight() ? 'dark_mode' : 'light_mode';
+}
+
+// Sync body class on DOMContentLoaded (anti-flash applied html class already)
+document.addEventListener('DOMContentLoaded', function () {
+    if (_isLight()) document.body.classList.add('light-mode');
+    _updateThemeIcon();
+});
+
+// Keyboard shortcut
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+        e.preventDefault();
+        toggleTheme();
+    }
+});
+
+/* ────────────────────────────────────────────
+   Dropdown
+──────────────────────────────────────────── */
+function toggleDropdown(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isOpen = el.classList.contains('open');
+    document.querySelectorAll('.nav-dropdown').forEach(d => d.classList.remove('open'));
+    if (!isOpen) el.classList.add('open');
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-dropdown-wrap')) {
+        document.querySelectorAll('.nav-dropdown').forEach(d => d.classList.remove('open'));
+    }
+});
+
+/* ────────────────────────────────────────────
+   Mobile Menu
+──────────────────────────────────────────── */
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    const btn  = document.getElementById('hamburger-btn');
+    if (!menu) return;
+    const open = menu.classList.toggle('open');
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#hamburger-btn') && !e.target.closest('#mobile-menu')) {
+        document.getElementById('mobile-menu')?.classList.remove('open');
+        document.getElementById('hamburger-btn')?.setAttribute('aria-expanded','false');
+    }
+});
+
+/* ────────────────────────────────────────────
+   Footer visibility
+──────────────────────────────────────────── */
+(function(){
+    const p = window.location.pathname;
+    if (p === '/' || p === '/about') {
+        const f = document.getElementById('site-footer');
+        if (f) f.style.display = '';
+    }
+})();
+
+/* ────────────────────────────────────────────
+   Flash auto-dismiss
+──────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.flash-msg').forEach((el, i) => {
+        setTimeout(() => {
+            if (!el.isConnected) return;
+            el.style.transition = 'opacity 0.4s, transform 0.4s';
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(-4px)';
+            setTimeout(() => el.remove(), 400);
+        }, 4000 + i * 300);
+    });
+});
+
+/* ────────────────────────────────────────────
+   Notifications
+──────────────────────────────────────────── */
+function _renderEmptyNotif() {
+    const list = document.getElementById('notif-list');
+    if (list) list.innerHTML = `
+        <div style="padding:1.75rem;text-align:center;color:var(--text-muted);font-size:.85rem;">
+            <span class="material-icons-round" style="font-size:2.2rem;display:block;margin-bottom:.5rem;opacity:.45;">notifications_none</span>
+            اعلانی وجود ندارد
+        </div>`;
+}
+
+function _updateNotifBadge(count) {
+    const badge = document.getElementById('notif-badge');
+    if (!badge) return;
+    if (count > 0) {
+        badge.textContent = count > 99 ? '۹۹+' : String(count);
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function _renderNotifItems(items) {
+    const list = document.getElementById('notif-list');
+    if (!list) return;
+    if (!items || items.length === 0) { _renderEmptyNotif(); return; }
+    list.innerHTML = '';
+    items.forEach(n => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:.55rem;padding:.7rem .9rem;cursor:pointer;align-items:flex-start;border-bottom:1px solid var(--glass-border);' +
+            (n.is_read ? 'opacity:.65;' : 'background:rgba(108,99,255,.06);');
+        const icon = document.createElement('span');
+        icon.className = 'material-icons-round';
+        icon.style.cssText = 'font-size:1.15rem;color:var(--brand-light);flex-shrink:0;';
+        icon.textContent = 'info_outline';
+        const body = document.createElement('div');
+        body.style.cssText = 'flex:1;min-width:0;';
+        const msg = document.createElement('div');
+        msg.style.cssText = 'font-size:.82rem;color:var(--text-primary);white-space:pre-wrap;word-break:break-word;';
+        msg.textContent = n.message || '';
+        body.appendChild(msg);
+        if (n.created_at) {
+            const time = document.createElement('div');
+            time.style.cssText = 'font-size:.7rem;color:var(--text-muted);margin-top:.2rem;';
+            time.textContent = n.created_at;
+            body.appendChild(time);
+        }
+        row.appendChild(icon);
+        row.appendChild(body);
+        if (!n.is_read) {
+            row.onclick = () => markNotifRead(n.id, row);
+        }
+        list.appendChild(row);
+    });
+}
+
+function loadNotifications() {
+    const btn = document.getElementById('notif-btn');
+    if (!btn || btn.dataset.authenticated !== '1') return;
+    csrfFetch('/api/notifications')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+            if (!d) return;
+            _updateNotifBadge(d.unread_count || 0);
+            _renderNotifItems(d.notifications);
+        })
+        .catch(() => {});
+}
+
+function markNotifRead(id, row) {
+    csrfFetch('/mark_notification_read/' + id, { method: 'POST' })
+        .then(() => {
+            if (row) row.style.background = 'transparent';
+            const badge = document.getElementById('notif-badge');
+            if (badge && !badge.classList.contains('hidden')) {
+                const next = Math.max((parseInt(badge.textContent, 10) || 1) - 1, 0);
+                _updateNotifBadge(next);
+            }
+        })
+        .catch(() => {});
+}
+
+function markAllNotifRead() {
+    csrfFetch('/api/notifications/mark_all_read', { method: 'POST' })
+        .then(() => {
+            _updateNotifBadge(0);
+            _renderEmptyNotif();
+        })
+        .catch(() => {});
+    toggleDropdown('notif-dropdown'); // close
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    _renderEmptyNotif();
+    loadNotifications();
+});
+</script>
+
+{% block scripts %}{% endblock %}
+
+<!-- Scroll Animations JS -->
+<script src="{{ url_for('static', filename='js/scroll-scrubber.js') }}"></script>
+
+</body>
+</html>

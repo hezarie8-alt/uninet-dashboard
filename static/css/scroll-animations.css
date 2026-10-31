@@ -1,0 +1,218 @@
+/* ============================================================
+   Scroll-Driven Video Scrubbing — Styles
+   ============================================================ */
+
+/* --- Scroll Progress Bar --- */
+.scroll-progress-bar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brand-light), var(--accent));
+    z-index: 1100;
+    transition: width 0.1s linear;
+    pointer-events: none;
+}
+
+/* --- About Page Scroll Section --- */
+.about-scroll-section {
+    position: relative;
+    height: 300vh;
+    overflow: visible;
+}
+
+.scroll-video-container {
+    position: sticky;
+    top: var(--navbar-h, 64px);
+    height: calc(100vh - var(--navbar-h, 64px));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.scroll-canvas-wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.scroll-canvas-wrap canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.scroll-overlay {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 900px;
+    padding: 0 2rem;
+    text-align: center;
+}
+
+.scroll-text-blocks {
+    position: relative;
+    min-height: 200px;
+}
+
+.scroll-text-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+    pointer-events: none;
+}
+
+.scroll-text-item.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.scroll-text-item .material-icons-round {
+    font-size: 2.5rem;
+    color: var(--brand-light);
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.scroll-text-item h3 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 0.6rem;
+}
+
+.scroll-text-item p {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.7;
+}
+
+/* --- Scroll Step Indicator --- */
+.scroll-step-indicator {
+    position: absolute;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.6rem;
+    z-index: 3;
+}
+
+.scroll-step-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--glass-border-strong);
+    transition: all 0.4s var(--ease);
+}
+
+.scroll-step-dot.active {
+    background: var(--brand-light);
+    box-shadow: 0 0 12px rgba(38,198,218,0.5);
+    transform: scale(1.3);
+}
+
+/* --- Homepage Scroll Sections --- */
+.hero-scroll-parallax {
+    will-change: transform;
+}
+
+.bento-grid .feature-card {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.6s var(--ease), transform 0.6s var(--ease), border-color 0.35s, box-shadow 0.35s;
+}
+
+.bento-grid .feature-card.revealed {
+    opacity: 1;
+    transform: none;
+}
+
+.bento-grid .feature-card:nth-child(1) { transition-delay: 0s; }
+.bento-grid .feature-card:nth-child(2) { transition-delay: 0.08s; }
+.bento-grid .feature-card:nth-child(3) { transition-delay: 0.16s; }
+.bento-grid .feature-card:nth-child(4) { transition-delay: 0.24s; }
+.bento-grid .feature-card:nth-child(5) { transition-delay: 0.32s; }
+.bento-grid .feature-card:nth-child(6) { transition-delay: 0.4s; }
+
+/* Stats counter animation */
+.stat-num {
+    transition: transform 0.3s var(--ease);
+}
+.stat-num.counting {
+    transform: scale(1.05);
+}
+
+/* CTA section reveal */
+.cta-glass {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+}
+.cta-glass.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+    .scroll-text-item {
+        transition: opacity 0.01s !important;
+        transform: none !important;
+    }
+    .scroll-text-item.active {
+        transform: none !important;
+    }
+    .bento-grid .feature-card {
+        transition: opacity 0.01s !important;
+        transform: none !important;
+    }
+    .bento-grid .feature-card.revealed {
+        transform: none !important;
+    }
+    .cta-glass {
+        transition: opacity 0.01s !important;
+        transform: none !important;
+    }
+    .cta-glass.revealed {
+        transform: none !important;
+    }
+    .scroll-progress-bar {
+        transition: none !important;
+    }
+    .reveal-card {
+        transition: opacity 0.01s !important;
+        transform: none !important;
+    }
+    .reveal-card.visible {
+        transform: none !important;
+    }
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .about-scroll-section {
+        height: 250vh;
+    }
+    .scroll-text-item h3 {
+        font-size: 1.4rem;
+    }
+    .scroll-text-item p {
+        font-size: 0.95rem;
+    }
+    .scroll-text-item .material-icons-round {
+        font-size: 2rem;
+    }
+}
