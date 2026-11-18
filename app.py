@@ -1,7 +1,6 @@
 import os
 import json
 import re
-import secrets
 import socket as _socket_mod
 import threading
 import time as _time_mod
@@ -777,17 +776,16 @@ def start_holiday_refresh():
 def create_initial_data():
     try:
         if not User.query.filter_by(student_id='admin').first():
-            admin_password = secrets.token_urlsafe(12)
             admin = User(
                 full_name='مدیر سیستم',
                 student_id='admin',
                 major='مدیریت',
-                password_hash=generate_password_hash(admin_password, method='pbkdf2:sha256'),
+                password_hash=generate_password_hash('admin123', method='pbkdf2:sha256'),
                 is_admin=True
             )
             db.session.add(admin)
             db.session.commit()
-            print(f"✓ Admin user created: ID=admin | Password={admin_password}")
+            print("✓ Admin user created: ID=admin")
         else:
             print("✓ Admin user already exists, skipping.")
     except Exception as e:
@@ -3664,6 +3662,6 @@ if __name__ == '__main__':
     print(f"\n{'='*50}")
     print(f"  UniNet Dashboard — اجرای محلی")
     print(f"  آدرس: http://{host}:{port}")
-    print(f"  ادمین: student_id=admin (رمز در لاگ اولیه نمایش داده شد)")
+    print(f"  ادمین: student_id=admin")
     print(f"{'='*50}\n")
     socketio.run(app, host=host, port=port, debug=debug)

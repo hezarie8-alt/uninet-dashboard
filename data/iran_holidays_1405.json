@@ -1,6 +1,5 @@
 {
- "cross_checked_with": "rokh 0.5 (openscilab) via tests/_vendor; see tests/task3_crosscheck_report.json",
- "generated_at": "2026-10-17T13:37:03+0330",
+ "generated_at": "2026-11-18T11:41:04.348555",
  "holidays": {
   "01-01": [
    "جشن نوروز/جشن سال نو",
@@ -84,7 +83,7 @@
    "روز ملی شدن صنعت نفت ایران"
   ]
  },
- "notes": "Weekly plain Fridays are computed by the server at request time and are intentionally NOT stored here; a Friday that carries an official occasion IS stored so its tooltip can show the occasion. Source strings are normalized (whitespace collapsed, «عیدنوروز» -> «عید نوروز»).",
+ "notes": "refreshed by background service; plain Fridays are computed by the server and are not stored.",
  "primary_source": "holidayapi.ir day-level is_holiday (events filtered to is_holiday=true)",
  "year": 1405
 }
